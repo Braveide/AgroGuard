@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  backend:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: always
+    networks:
+      - agroguard-net
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "5500:80"          # ← Cambia a 5500 para coincidir con ORIGEN_PERMITIDO
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+      - ./:/usr/share/nginx/html
+    depends_on:
+      - backend
+    networks:
+      - agroguard-net
+
+networks:
+  agroguard-net:
+    driver: bridge

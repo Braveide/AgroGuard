@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgroGuard — Sistema de Gestión de Plagas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    .protanopia { filter: url(#protanopia) !important; }
+.deuteranopia { filter: url(#deuteranopia) !important; }
+.tritanopia { filter: url(#tritanopia) !important; }
+.acromatopsia { filter: grayscale(100%) !important; }
+    :root {
+      --bg:       #0f1f13;
+      --surface:  #1a3020;
+      --surface2: #213d28;
+      --border:   rgba(255,255,255,.1);
+      --border2:  rgba(255,255,255,.06);
+      --neon:     #b8f458;
+      --cyan:     #5de8c8;
+      --amber:    #f5c842;
+      --red:      #f26b6b;
+      --text:     #f0f7ec;
+      --text2:    #a8c8a0;
+      --muted:    #6a9070;
+      --white:    #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(184,244,88,.08) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 100%, rgba(93,232,200,.06) 0%, transparent 55%);
+      min-height: 100vh;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .content { position: relative; z-index: 1; }
+
+    .header-bar {
+      background: linear-gradient(135deg, #0f1f13 0%, #162b1b 50%, #1a3020 100%);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: 1.25rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .header-bar::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(184,244,88,.6), rgba(93,232,200,.4), transparent);
+    }
+
+    .card {
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 1rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.08);
+      transition: border-color .3s, box-shadow .3s, transform .2s;
+    }
+    .card:hover {
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 8px 36px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.1);
+      transform: translateY(-1px);
+    }
+
+    input, select, textarea {
+      font-family: 'Manrope', sans-serif;
+      width: 100%;
+      padding: .65rem 1rem;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: .5rem;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-size: .875rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(184,244,88,.5);
+      box-shadow: 0 0 0 3px rgba(184,244,88,.08);
+    }
+    select option { background: #1a3020; color: var(--text); }
+
+    .btn-primary {
+      background: rgba(184,244,88,.15);
+      color: var(--neon);
+      padding: .7rem 1.5rem;
+      border-radius: .5rem;
+      font-weight: 700;
+      font-size: .875rem;
+      cursor: pointer;
+      border: 1px solid rgba(184,244,88,.35);
+      transition: all .2s;
+      letter-spacing: .02em;
+      font-family: 'Manrope', sans-serif;
+    }
+    .btn-primary:hover {
+      background: rgba(184,244,88,.22);
+      box-shadow: 0 4px 20px rgba(184,244,88,.15);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-search {
+      background: rgba(255,255,255,.1);
+      color: var(--white);
+      padding: .7rem 1.5rem;
+      border-radius: .5rem;
+      font-weight: 700;
+      font-size: .875rem;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.18);
+      transition: all .2s;
+      letter-spacing: .02em;
+      font-family: 'Manrope', sans-serif;
+    }
+    .btn-search:hover {
+      background: rgba(255,255,255,.16);
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      transform: translateY(-1px);
+    }
+    .btn-search:active { transform: translateY(0); }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -.01em;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: .78rem; }
+
+    .badge {
+      display: inline-block;
+      padding: .2rem .65rem;
+      border-radius: 4px;
+      font-size: .7rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+    .badge-alto  { background: rgba(242,107,107,.15); color: #f9a0a0; border: 1px solid rgba(242,107,107,.3); }
+    .badge-medio { background: rgba(245,200,66,.12); color: #f5d070; border: 1px solid rgba(245,200,66,.28); }
+    .badge-bajo  { background: rgba(184,244,88,.1); color: var(--neon); border: 1px solid rgba(184,244,88,.25); }
+
+    .pill-source {
+      font-size: .65rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .2rem .65rem;
+      border-radius: 4px;
+    }
+    .pill-local { background: rgba(93,232,200,.12); color: var(--cyan); border: 1px solid rgba(93,232,200,.25); }
+    .pill-gbif  { background: rgba(184,244,88,.1); color: var(--neon); border: 1px solid rgba(184,244,88,.22); }
+    .pill-error { background: rgba(242,107,107,.1); color: var(--red); border: 1px solid rgba(242,107,107,.25); }
+
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .result-grid { grid-template-columns: 1fr; } }
+
+    .leaf-divider { display: flex; align-items: center; gap: .75rem; margin: 1.5rem 0 1rem; }
+    .leaf-divider::before, .leaf-divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+    }
+
+    .spinner {
+      width: 22px; height: 22px;
+      border: 2px solid rgba(255,255,255,.1);
+      border-top-color: var(--neon);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tab-btn {
+      padding: .6rem .75rem;
+      border-radius: .4rem;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Manrope', sans-serif;
+      font-size: .82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .01em;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .active-tab {
+      background: rgba(255,255,255,.1) !important;
+      color: var(--white) !important;
+      font-weight: 700 !important;
+      border-color: rgba(255,255,255,.18) !important;
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+    .tab-panel { animation: fadeUp .3s ease; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp .35s ease forwards; }
+
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      padding: .75rem 1.25rem;
+      border-radius: .5rem;
+      font-size: .82rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      transition: opacity .3s, transform .3s;
+      opacity: 0; pointer-events: none; transform: translateY(8px);
+      z-index: 999;
+      border: 1px solid transparent;
+      backdrop-filter: blur(12px);
+    }
+    #toast.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    #toast.success { background: rgba(184,244,88,.15); color: var(--neon); border-color: rgba(184,244,88,.3); }
+    #toast.error   { background: rgba(242,107,107,.15); color: var(--red); border-color: rgba(242,107,107,.3); }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+    /* ── Accesibilidad ── */
+    .filtro-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--text2);
+      padding: .45rem .75rem;
+      border-radius: .4rem;
+      font-family: 'Manrope', sans-serif;
+      font-size: .8rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all .2s;
+    }
+    .filtro-btn:hover { background: rgba(255,255,255,.08); color: var(--white); }
+    .filtro-btn.activo { background: rgba(184,244,88,.12); color: var(--neon); border-color: rgba(184,244,88,.3); }
+
+    /* Filtros de daltonismo aplicados al body */
+    body.daltonismo-protanopia    { filter: url(#filtro-protanopia); }
+    body.daltonismo-deuteranopia  { filter: url(#filtro-deuteranopia); }
+    body.daltonismo-tritanopia    { filter: url(#filtro-tritanopia); }
+    body.daltonismo-achromatopsia { filter: url(#filtro-achromatopsia); }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.15); opacity: .7; }
+    }
+    body.lector-activo *:hover {
+      outline: 2px solid var(--cyan) !important;
+      outline-offset: 2px !important;
+      cursor: pointer !important;
+    }
+  </style>
+</head>
+
+<body>
+<!-- ────────────────── TOAST ────────────────── -->
+<div id="toast"></div>
+
+<div class="content">
+
+  <!-- ────────────────── HEADER ────────────────── -->
+  <header class="header-bar">
+    <div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <!-- Logo SVG -->
+        <div style="width:42px;height:42px;background:rgba(168,255,62,.1);border:1px solid rgba(168,255,62,.25);border-radius:.5rem;display:flex;align-items:center;justify-content:center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C8 2 4 5 4 10c0 3 1.5 5.5 4 7l1 5h6l1-5c2.5-1.5 4-4 4-7 0-5-4-8-8-8z" stroke="#a8ff3e" stroke-width="1.5" fill="none"/>
+            <path d="M12 6v8M9 9l3-3 3 3" stroke="#a8ff3e" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--neon);letter-spacing:-.02em;line-height:1;">
+            AGROGUARD
+          </h1>
+          <p class="mono" style="color:var(--muted);font-size:.7rem;margin-top:.15rem;letter-spacing:.08em;">
+            SISTEMA DE GESTIÓN DE PLAGAS · v1.0
+          </p>
+        </div>
+      </div>
+      <a href="#" onclick="window.open(API + '/reporte_pdf', '_blank')" target="_blank"
+        style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.25);color:var(--neon);padding:.55rem 1rem;border-radius:.5rem;font-size:.8rem;font-weight:600;text-decoration:none;white-space:nowrap;transition:all .2s;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;"
+        onmouseover="this.style.background='rgba(168,255,62,.15)';this.style.boxShadow='0 0 16px rgba(168,255,62,.15)'"
+        onmouseout="this.style.background='rgba(168,255,62,.08)';this.style.boxShadow='none'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span data-i18n="btn_pdf">REPORTE PDF</span>
+      </a>
+
+      <!-- ── Botones de Accesibilidad ── -->
+      <div style="display:flex;gap:.4rem;">
+        <!-- Selector de idioma -->
+        <select id="selector-idioma" onchange="cambiarIdioma(this.value)"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.5rem .6rem;border-radius:.5rem;cursor:pointer;font-size:.8rem;font-family:'JetBrains Mono',monospace;outline:none;transition:all .2s;">
+          <option value="es">🇲🇽 ES</option>
+          <option value="en">🇺🇸 EN</option>
+          <option value="pt">🇧🇷 PT</option>
+        </select>
+        <button onclick="toggleModoCampo()" id="btn-campo" title="Modo Campo"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.5rem .7rem;border-radius:.5rem;cursor:pointer;font-size:.85rem;transition:all .2s;"
+          onmouseover="this.style.background='rgba(255,255,255,.16)'"
+          onmouseout="this.style.background='rgba(255,255,255,.08)'">
+          🌾
+        </button>
+        <button onclick="toggleDaltonismo()" id="btn-daltonismo" title="Modo daltonismo"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.5rem .7rem;border-radius:.5rem;cursor:pointer;font-size:.85rem;transition:all .2s;"
+          onmouseover="this.style.background='rgba(255,255,255,.16)'"
+          onmouseout="this.style.background='rgba(255,255,255,.08)'">
+          👁
+        </button>
+        <button onclick="toggleLectorVoz()" id="btn-voz" title="Lector de voz"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.5rem .7rem;border-radius:.5rem;cursor:pointer;font-size:.85rem;transition:all .2s;"
+          onmouseover="this.style.background='rgba(255,255,255,.16)'"
+          onmouseout="this.style.background='rgba(255,255,255,.08)'">
+          🔊
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ────────────────── MODO CAMPO ────────────────── -->
+  <div id="modo-campo-overlay" class="hidden" style="position:fixed;inset:0;z-index:500;background:#0a1a0d;overflow-y:auto;">
+    <!-- Header modo campo -->
+    <div style="background:#0f2414;border-bottom:2px solid var(--neon);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <span style="font-size:1.8rem;">🌾</span>
+        <div>
+          <p style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--neon);">MODO CAMPO</p>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted);">INTERFAZ SIMPLIFICADA</p>
+        </div>
+      </div>
+      <button onclick="toggleModoCampo()"
+        style="background:rgba(255,71,87,.15);border:2px solid rgba(255,71,87,.4);color:#ff4757;padding:.6rem 1.2rem;border-radius:.5rem;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;">
+        ✕ SALIR
+      </button>
+    </div>
+
+    <!-- Contenido modo campo -->
+    <div style="padding:1.5rem;max-width:500px;margin:0 auto;">
+
+      <!-- Botón 1: Identificar por imagen -->
+      <button onclick="activarCamaraCampo()"
+        style="width:100%;background:rgba(168,255,62,.12);border:2px solid rgba(168,255,62,.4);border-radius:1rem;padding:2rem;margin-bottom:1rem;cursor:pointer;text-align:center;transition:all .2s;display:block;"
+        onmouseover="this.style.background='rgba(168,255,62,.2)'"
+        onmouseout="this.style.background='rgba(168,255,62,.12)'">
+        <div style="font-size:3.5rem;margin-bottom:.5rem;">📷</div>
+        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">FOTOGRAFIAR PLAGA</p>
+        <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);">Toma una foto para identificarla</p>
+        <input id="campo-input-imagen" type="file" accept="image/*" capture="environment" style="display:none;" onchange="procesarImagenCampo(event)" />
+      </button>
+
+      <!-- Botón 2: Registrar con voz -->
+      <button onclick="iniciarRegistroVoz()"
+        style="width:100%;background:rgba(93,232,200,.1);border:2px solid rgba(93,232,200,.3);border-radius:1rem;padding:2rem;margin-bottom:1rem;cursor:pointer;text-align:center;transition:all .2s;display:block;"
+        onmouseover="this.style.background='rgba(93,232,200,.18)'"
+        onmouseout="this.style.background='rgba(93,232,200,.1)'">
+        <div style="font-size:3.5rem;margin-bottom:.5rem;">🎙️</div>
+        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--cyan);margin-bottom:.3rem;">REGISTRAR POR VOZ</p>
+        <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);">Dicta el nombre de la plaga</p>
+      </button>
+
+      <!-- Botón 3: Ver mapa -->
+      <button onclick="verMapaCampo()"
+        style="width:100%;background:rgba(255,184,48,.08);border:2px solid rgba(255,184,48,.25);border-radius:1rem;padding:2rem;margin-bottom:1rem;cursor:pointer;text-align:center;transition:all .2s;display:block;"
+        onmouseover="this.style.background='rgba(255,184,48,.15)'"
+        onmouseout="this.style.background='rgba(255,184,48,.08)'">
+        <div style="font-size:3.5rem;margin-bottom:.5rem;">🗺️</div>
+        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--amber);margin-bottom:.3rem;">VER FOCOS CERCANOS</p>
+        <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);">Mapa de plagas en tu zona</p>
+      </button>
+
+      <!-- Resultado de identificación en campo -->
+      <div id="campo-resultado" class="hidden" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:1rem;padding:1.5rem;margin-top:.5rem;">
+        <p style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);margin-bottom:.75rem;letter-spacing:.08em;">RESULTADO</p>
+        <div id="campo-resultado-contenido"></div>
+      </div>
+
+      <!-- Estado de reconocimiento de voz -->
+      <div id="campo-voz-estado" class="hidden" style="background:rgba(93,232,200,.08);border:2px solid rgba(93,232,200,.3);border-radius:1rem;padding:1.5rem;margin-top:.5rem;text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:.5rem;animation:pulse 1s infinite;">🎙️</div>
+        <p style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--cyan);">ESCUCHANDO…</p>
+        <p id="campo-voz-texto" style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);margin-top:.5rem;">Di el nombre de la plaga</p>
+        <button onclick="detenerVoz()"
+          style="margin-top:1rem;background:rgba(255,71,87,.15);border:1px solid rgba(255,71,87,.3);color:#ff4757;padding:.5rem 1.2rem;border-radius:.5rem;cursor:pointer;font-weight:700;">
+          ■ Detener
+        </button>
+      </div>
+
+    </div>
+  </div>
+  <div id="panel-accesibilidad" class="hidden" style="position:fixed;bottom:1.5rem;left:1.5rem;z-index:998;background:rgba(15,31,19,.95);border:1px solid rgba(255,255,255,.15);border-radius:.75rem;padding:1rem 1.25rem;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,.4);min-width:220px;">
+    <p style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);letter-spacing:.08em;margin-bottom:.75rem;" data-i18n="daltonismo_titulo">MODO DALTONISMO</p>
+    <div style="display:flex;flex-direction:column;gap:.4rem;">
+      <button onclick="aplicarFiltro('normal')" class="filtro-btn" id="f-normal">
+        ● Sin filtro
+      </button>
+      <button onclick="aplicarFiltro('protanopia')" class="filtro-btn" id="f-protanopia">
+        ● Protanopia (rojo)
+      </button>
+      <button onclick="aplicarFiltro('deuteranopia')" class="filtro-btn" id="f-deuteranopia">
+        ● Deuteranopia (verde)
+      </button>
+      <button onclick="aplicarFiltro('tritanopia')" class="filtro-btn" id="f-tritanopia">
+        ● Tritanopia (azul)
+      </button>
+      <button onclick="aplicarFiltro('achromatopsia')" class="filtro-btn" id="f-achromatopsia">
+        ● Acromatopsia (sin color)
+      </button>
+    </div>
+  </div>
+
+  <!-- ── SVG Filtros de daltonismo ── -->
+  <svg style="position:absolute;width:0;height:0;">
+    <defs>
+      <filter id="filtro-protanopia">
+        <feColorMatrix type="matrix" values="0.567,0.433,0,0,0 0.558,0.442,0,0,0 0,0.242,0.758,0,0 0,0,0,1,0"/>
+      </filter>
+      <filter id="filtro-deuteranopia">
+        <feColorMatrix type="matrix" values="0.625,0.375,0,0,0 0.7,0.3,0,0,0 0,0.3,0.7,0,0 0,0,0,1,0"/>
+      </filter>
+      <filter id="filtro-tritanopia">
+        <feColorMatrix type="matrix" values="0.95,0.05,0,0,0 0,0.433,0.567,0,0 0,0.475,0.525,0,0 0,0,0,1,0"/>
+      </filter>
+      <filter id="filtro-achromatopsia">
+        <feColorMatrix type="saturate" values="0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- ────────────────── TABS NAV ────────────────── -->
+    <div style="display:flex;gap:.4rem;margin-bottom:1.25rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.6rem;padding:.35rem;">
+      <button onclick="cambiarTab('consultar')" id="tab-consultar" class="tab-btn active-tab" style="flex:1;">
+        <span style="margin-right:.35rem;">⌕</span> Consultar
+      </button>
+      <button onclick="cambiarTab('imagen')" id="tab-imagen" class="tab-btn" style="flex:1;">
+        <span style="margin-right:.35rem;">◈</span> Imagen
+      </button>
+      <button onclick="cambiarTab('registrar')" id="tab-registrar" class="tab-btn" style="flex:1;">
+        <span style="margin-right:.35rem;">⊕</span> Registrar
+      </button>
+      <button onclick="cambiarTab('mapa')" id="tab-mapa" class="tab-btn" style="flex:1;">
+        <span style="margin-right:.35rem;">◎</span> Mapa
+      </button>
+    </div>
+
+    <!-- ────────────────── TAB: CONSULTAR ────────────────── -->
+    <div id="panel-consultar" class="tab-panel">
+      <section class="card p-6">
+        <div class="section-title mb-1 flex items-center gap-2">
+          <span>🔍</span> <span data-i18n="titulo_consultar">Consulta Integral de Plaga</span>
+        </div>
+        <p class="text-sm mb-4" style="color:var(--muted);">
+          <span data-i18n="desc_consultar">Ingresa un nombre y obtendrás simultáneamente los registros locales <em>y</em> la ficha científica de GBIF.</span>
+        </p>
+        <div class="flex gap-2">
+          <input id="inp-buscar" type="text" data-i18n="placeholder_buscar" placeholder="Ej: mosca blanca, Bemisia tabaci…" />
+          <button class="btn-search" onclick="buscarIntegral()" style="white-space:nowrap;">
+            <span data-i18n="btn_buscar">Buscar todo</span>
+          </button>
+        </div>
+        <div id="resultados" class="mt-5 hidden">
+          <div class="leaf-divider">
+            <span class="mono" style="color:var(--neon); font-size:.75rem;">RESULTADOS</span>
+          </div>
+          <div class="result-grid">
+            <div id="col-local" class="space-y-3">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="pill-source pill-local" data-i18n="label_local">BD Local</span>
+                <span class="text-xs" style="color:var(--muted);" data-i18n="sub_local">bitácora interna</span>
+              </div>
+              <div id="local-content"></div>
+            </div>
+            <div id="col-gbif">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="pill-source pill-gbif">GBIF</span>
+                <span class="text-xs" style="color:var(--muted);" data-i18n="sub_gbif">ficha científica</span>
+              </div>
+              <div id="gbif-content"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ────────────────── TAB: IMAGEN ────────────────── -->
+    <div id="panel-imagen" class="tab-panel hidden">
+      <section class="card p-6">
+        <div class="section-title mb-1 flex items-center gap-2">
+          <span>📷</span> <span data-i18n="titulo_imagen">Identificar Plaga por Imagen</span>
+        </div>
+        <p class="text-sm mb-4" style="color:var(--muted);">
+          <span data-i18n="desc_imagen">Sube una foto de la plaga y el sistema la identificará automáticamente usando inteligencia artificial.</span>
+        </p>
+        <div id="drop-zone"
+          onclick="document.getElementById('inp-imagen').click()"
+          style="border:2px dashed rgba(168,255,62,.2);border-radius:.75rem;padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;"
+          onmouseover="this.style.borderColor='var(--leaf)';this.style.background='rgba(93,138,58,.04)'"
+          onmouseout="this.style.borderColor='rgba(93,138,58,.4)';this.style.background='transparent'"
+          ondragover="event.preventDefault();this.style.borderColor='var(--leaf)'"
+          ondragleave="this.style.borderColor='rgba(93,138,58,.4)'"
+          ondrop="handleDrop(event)">
+          <div style="font-size:2.5rem;margin-bottom:.5rem;">🌿</div>
+          <p style="font-weight:600;color:var(--neon);margin-bottom:.25rem;" data-i18n="drop_title">Haz clic o arrastra una imagen aquí</p>
+          <p class="mono" style="font-size:.75rem;color:var(--muted);" data-i18n="drop_sub">JPG, PNG, WEBP — máx. 5MB</p>
+          <input id="inp-imagen" type="file" accept="image/*" style="display:none;" onchange="previsualizarImagen(event)" />
+        </div>
+        <div id="img-preview-wrap" class="hidden mt-4" style="text-align:center;">
+          <img id="img-preview" src="" alt="Vista previa"
+            style="max-height:220px;border-radius:.75rem;box-shadow:0 4px 16px rgba(44,26,14,.15);display:inline-block;" />
+          <p id="img-nombre" class="mono mt-2" style="font-size:.75rem;color:var(--muted);"></p>
+          <button class="btn-primary mt-3" onclick="identificarImagen()">
+            🔍 Identificar plaga
+          </button>
+        </div>
+        <div id="img-resultado" class="mt-4"></div>
+      </section>
+    </div>
+
+    <!-- ────────────────── TAB: REGISTRAR ────────────────── -->
+    <div id="panel-registrar" class="tab-panel hidden">
+      <section class="card p-6">
+        <div class="section-title mb-1 flex items-center gap-2">
+          <span>📋</span> <span data-i18n="titulo_registrar">Registrar Nueva Plaga</span>
+        </div>
+        <p class="text-sm mb-4" style="color:var(--muted);">
+          <span data-i18n="desc_registrar">Añade un nuevo registro a la bitácora local de AgroGuard.</span>
+        </p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="flex flex-col gap-1">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_nombre">NOMBRE *</label>
+            <input id="f-nombre" type="text" data-i18n="placeholder_buscar" placeholder="Ej: mosca blanca" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_ncientifico">NOMBRE CIENTÍFICO *</label>
+            <input id="f-nombre-cientifico" type="text" data-i18n="placeholder_ncientifico" placeholder="Ej: Bemisia tabaci" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_familia">FAMILIA *</label>
+            <input id="f-familia" type="text" data-i18n="placeholder_familia"    placeholder="Ej: Aleyrodidae" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_reino">REINO *</label>
+            <input id="f-reino" type="text" data-i18n="placeholder_reino"      placeholder="Ej: Animalia" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_riesgo">RIESGO *</label>
+            <select id="f-riesgo">
+              <option value="" data-i18n="opt_seleccionar">— Seleccionar —</option>
+              <option value="Alto" data-i18n="opt_alto">🔴 Alto</option>
+              <option value="Medio" data-i18n="opt_medio">🟡 Medio</option>
+              <option value="Bajo" data-i18n="opt_bajo">🟢 Bajo</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_fecha">FECHA *</label>
+            <input id="f-fecha" type="date" />
+          </div>
+          <div class="flex flex-col gap-1 sm:col-span-2">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_ficha">FICHA TÉCNICA *</label>
+            <textarea id="f-ficha" rows="3" data-i18n="placeholder_ficha" placeholder="Describe características, síntomas, ciclo de vida, tratamiento recomendado…" style="resize:vertical;"></textarea>
+          </div>
+          <div class="flex flex-col gap-1 sm:col-span-2">
+            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_ubicacion">UBICACIÓN DEL FOCO</label>
+            <div class="flex gap-2 items-center">
+              <input id="f-latitud" type="text" data-i18n="placeholder_lat" placeholder="Latitud" readonly style="background:rgba(93,138,58,.06);cursor:default;" />
+              <input id="f-longitud" type="text" data-i18n="placeholder_lng" placeholder="Longitud" readonly style="background:rgba(93,138,58,.06);cursor:default;" />
+              <button type="button" onclick="obtenerUbicacion()"
+                style="white-space:nowrap;padding:.6rem 1rem;border-radius:.5rem;border:1.5px solid var(--leaf);color:var(--neon);background:transparent;cursor:pointer;font-size:.8rem;font-weight:600;transition:all .2s;"
+                onmouseover="this.style.background='var(--leaf)';this.style.color='#fff'"
+                onmouseout="this.style.background='transparent';this.style.color='var(--leaf)'">
+                <span data-i18n="btn_detectar">📍 Detectar</span>
+              </button>
+            </div>
+            <p id="geo-status" class="mono" style="font-size:.7rem;color:var(--muted);"></p>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button class="btn-primary" onclick="registrarPlaga()">
+            <span data-i18n="btn_guardar">＋ Guardar en bitácora</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ────────────────── TAB: MAPA ────────────────── -->
+    <div id="panel-mapa" class="tab-panel hidden">
+      <section class="card p-6">
+        <div class="section-title mb-1 flex items-center gap-2">
+          <span>🗺️</span> <span data-i18n="titulo_mapa">Mapa de Focos de Infección</span>
+        </div>
+        <p class="text-sm mb-4" style="color:var(--muted);">
+          <span data-i18n="desc_mapa">Visualiza todos los focos registrados con ubicación geográfica.</span>
+        </p>
+        <div class="flex gap-2 mb-3">
+          <button class="btn-search" style="font-size:.8rem;padding:.5rem 1rem;" onclick="cargarMapa()">
+            <span data-i18n="btn_actualizar">↺ Actualizar mapa</span>
+          </button>
+          <div class="flex items-center gap-3 ml-2" style="font-size:.78rem;">
+            <span data-i18n="riesgo_alto">🔴 Alto</span>
+            <span data-i18n="riesgo_medio">🟡 Medio</span>
+            <span data-i18n="riesgo_bajo">🟢 Bajo</span>
+          </div>
+        </div>
+        <div id="mapa" style="height:420px;border-radius:.75rem;border:1px solid rgba(93,138,58,.2);overflow:hidden;"></div>
+        <p id="mapa-status" class="mono text-center mt-2" style="font-size:.72rem;color:var(--muted);"></p>
+      </section>
+    </div>
+
+  </main>
+</div>
+
+<!-- ────────────────── SCRIPT ────────────────── -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+   const API = `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_KEY = "my-public-key";
+const API_BASE = API; // Alias para usar la base del API en todas las peticiones
+  let mapaLeaflet = null;
+
+  /* ─── Tabs ─── */
+function cambiarTab(tab) {
+  // Ocultar todos los paneles y desactivar todas las tabs
+  ['consultar','imagen','registrar','mapa'].forEach(t => {
+    const panel = document.getElementById(`panel-${t}`);
+    const tabBtn = document.getElementById(`tab-${t}`);
+    if (panel) panel.classList.add('hidden');
+    if (tabBtn) tabBtn.classList.remove('active-tab');
+  });
+  // Mostrar el panel solicitado y activar su tab
+  const panelActual = document.getElementById(`panel-${tab}`);
+  const tabActual   = document.getElementById(`tab-${tab}`);
+  if (panelActual) panelActual.classList.remove('hidden');
+  if (tabActual)   tabActual.classList.add('active-tab');
+  // Si el panel es el mapa, forzamos el resize de Leaflet
+  if (tab === 'mapa') {
+    setTimeout(() => { if (mapaLeaflet) mapaLeaflet.invalidateSize(); }, 100);
+  }
+}
+
+  /* ─── Helpers ─── */
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show `;
+    setTimeout(() => { t.className = ''; }, 3200);
+  }
+
+  function badgeRiesgo(riesgo) {
+    const map = { Alto: 'badge-alto', Medio: 'badge-medio', Bajo: 'badge-bajo' };
+    return `<span class="badge ${map[riesgo] || ''}"></span>`;
+  }
+
+  function spinner() {
+    return `<div class="flex justify-center py-4"><div class="spinner"></div></div>`;
+  }
+
+  function errorBox(msg) {
+    return `
+      <div class="rounded-lg p-3 text-sm fade-up" style="background:rgba(255,71,87,.08);color:var(--red);border:1px solid rgba(255,71,87,.3);">
+        <span style="font-weight:600;">⚠️ Sin datos</span><br/>
+        <span style="opacity:.85;"></span>
+      </div>`;
+  }
+
+  /* ─── Registrar plaga ─── */
+  async function registrarPlaga() {
+    const nombre            = document.getElementById('f-nombre').value.trim();
+    const nombre_cientifico = document.getElementById('f-nombre-cientifico').value.trim();
+    const familia           = document.getElementById('f-familia').value.trim();
+    const reino             = document.getElementById('f-reino').value.trim();
+    const riesgo            = document.getElementById('f-riesgo').value;
+    const ficha_tecnica     = document.getElementById('f-ficha').value.trim();
+    const fecha             = document.getElementById('f-fecha').value;
+
+    if (!nombre || !nombre_cientifico || !familia || !reino || !riesgo || !ficha_tecnica || !fecha) {
+      showToast('Completa todos los campos antes de guardar.', 'error'); return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/registrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({ nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha }),
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Error desconocido');
+      const data = await res.json();
+      showToast(`✅ Plaga #${data.id} registrada correctamente.`, 'success');
+      // Limpiar form
+      ['f-nombre','f-nombre-cientifico','f-familia','f-reino','f-ficha','f-fecha'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-riesgo').value = '';
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
+    }
+  }
+
+  /* ─── Buscar integral ─── */
+  async function buscarIntegral() {
+    const nombre = document.getElementById('inp-buscar').value.trim();
+    if (!nombre) { showToast('Escribe un nombre para buscar.', 'error'); return; }
+
+    // Mostrar sección y spinners
+    document.getElementById('resultados').classList.remove('hidden');
+    document.getElementById('local-content').innerHTML = spinner();
+    document.getElementById('gbif-content').innerHTML  = spinner();
+
+    // Peticiones en paralelo
+    const [localResult, gbifResult] = await Promise.allSettled([
+      fetch(`${API_BASE}/consultar/${encodeURIComponent(nombre)}`, { headers: { 'x-api-key': API_KEY } }).then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e.detail || 'No encontrado'));
+        return r.json();
+      }),
+      fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombre)}`, { headers: { 'x-api-key': API_KEY } }).then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e.detail || 'No encontrado'));
+        return r.json();
+      }),
+    ]);
+
+    /* ── Render local ── */
+    if (localResult.status === 'fulfilled') {
+      const registros = localResult.value;
+      document.getElementById('local-content').innerHTML = registros.map(r => `
+        <div class="card p-4 fade-up" style="border-left:3px solid var(--cyan);background:rgba(5,20,28,.8);">
+          <p class="mono text-xs mb-2" style="color:var(--cyan);">REGISTRO LOCAL</p>
+          <table class="w-full text-sm" style="border-collapse:collapse;">
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre</td>
+              <td style="font-weight:600;color:var(--text);">${r.nombre_plaga}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
+              <td style="font-style:italic;font-weight:600;color:var(--text);">${r.nombre_cientifico}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
+              <td style="color:var(--text);">${r.familia}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
+              <td style="color:var(--text);">${r.reino}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Riesgo</td>
+              <td>${badgeRiesgo(r.riesgo)}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;vertical-align:top;">Ficha técnica</td>
+              <td style="color:var(--text);">${r.ficha_tecnica}</td>
+            </tr>
+          </table>
+          <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: BD local · #${r.id} · ${r.fecha}</p>
+        </div>`).join('');
+    } else {
+      document.getElementById('local-content').innerHTML =
+        errorBox(localResult.reason || 'Sin registros locales.');
+    }
+
+    /* ── Render GBIF ── */
+    if (gbifResult.status === 'fulfilled') {
+      const g = gbifResult.value;
+      document.getElementById('gbif-content').innerHTML = `
+        <div class="card p-4 fade-up" style="border-left:3px solid var(--neon);background:rgba(10,26,14,.8);">
+          ${g.foto_url ? `
+          <div style="margin:-1rem -1rem 0.75rem -1rem;border-radius:.75rem .75rem 0 0;overflow:hidden;height:160px;">
+            <img src="${g.foto_url}" alt="Foto de la especie"
+              style="width:100%;height:100%;object-fit:cover;display:block;"
+              onerror="this.parentElement.style.display='none'" />
+          </div>` : ''}
+          <p class="mono text-xs mb-2" style="color:var(--neon);">CLASIFICACIÓN TAXONÓMICA</p>
+          <table class="w-full text-sm" style="border-collapse:collapse;">
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
+              <td style="font-style:italic;font-weight:600;color:var(--text);">${g.nombre_cientifico}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
+              <td style="color:var(--text);">${g.familia}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
+              <td style="color:var(--text);">${g.reino}</td>
+            </tr>
+            ${g.confianza != null ? `
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Confianza</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem;">
+                  <div style="flex:1;height:6px;background:#ddd;border-radius:999px;">
+                    <div style="width:${g.confianza}%;height:100%;background:var(--neon);border-radius:999px;"></div>
+                  </div>
+                  <span class="mono" style="font-size:.75rem;">${g.confianza}%</span>
+                </div>
+              </td>
+            </tr>` : ''}
+            ${g.wikipedia_url ? `
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Wikipedia</td>
+              <td>
+                <a href="${g.wikipedia_url}" target="_blank" rel="noopener"
+                  style="color:var(--cyan);font-size:.82rem;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;">
+                  🔗 Ver artículo completo
+                </a>
+              </td>
+            </tr>` : ''}
+          </table>
+          <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: GBIF.org + iNaturalist</p>
+        </div>`;
+    } else {
+      document.getElementById('gbif-content').innerHTML =
+        errorBox(gbifResult.reason || 'GBIF no devolvió resultados.');
+    }
+  }
+
+  /* ─── Enter en buscador ─── */
+  document.addEventListener('DOMContentLoaded', () => {
+    const buscarInput = document.getElementById('inp-buscar');
+    if (buscarInput) {
+        buscarInput.addEventListener('keydown', e => { if (e.key === 'Enter') buscarIntegral(); });
+    }
+    // Inicializar mapa y ajustar tamaño
+    inicializarMapa();
+    setTimeout(() => { if (mapaLeaflet) mapaLeaflet.invalidateSize(); }, 300);
+});
+
+  /* ─── Fecha por defecto: hoy ─── */
+  document.getElementById('f-fecha').value = new Date().toISOString().slice(0, 10);
+
+  /* ════════════════════════════════════════
+     BÚSQUEDA POR IMAGEN
+  ════════════════════════════════════════ */
+  let archivoImagen = null;
+
+  function previsualizarImagen(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    cargarPreview(file);
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    document.getElementById('drop-zone').style.borderColor = 'rgba(93,138,58,.4)';
+    const file = event.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Solo se aceptan archivos de imagen.', 'error'); return;
+    }
+    cargarPreview(file);
+  }
+
+  function cargarPreview(file) {
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('La imagen no debe superar 5MB.', 'error'); return;
+    }
+    archivoImagen = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('img-preview').src = e.target.result;
+      document.getElementById('img-nombre').textContent = file.name;
+      document.getElementById('img-preview-wrap').classList.remove('hidden');
+      document.getElementById('img-resultado').innerHTML = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function identificarImagen() {
+    if (!archivoImagen) { showToast('Primero selecciona una imagen.', 'error'); return; }
+
+    const contenedor = document.getElementById('img-resultado');
+
+    // ── Paso 1: convertir imagen a base64 ──
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 800;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else       { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(archivoImagen);
+    });
+
+    contenedor.innerHTML = `
+      <div class="flex items-center gap-3 p-4 rounded-lg fade-up" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);">
+        <div class="spinner"></div>
+        <div>
+          <p style="font-weight:600;color:var(--white);font-size:.9rem;">Analizando imagen con IA…</p>
+          <p class="mono" style="font-size:.72rem;color:var(--muted);">Claude Vision → iNaturalist → GBIF</p>
+        </div>
+      </div>`;
+
+    // ── Paso 2: Claude Vision ──
+    let nombreDetectado = '';
+    try {
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: 'image/jpeg', data: base64 }
+              },
+              {
+                type: 'text',
+                text: 'Identify the insect, pest or plant species in this image. Reply ONLY with the most likely scientific name (genus and species). If uncertain, reply with just the genus or family name. No explanations, just the scientific name.'
+              }
+            ]
+          }]
+        })
+      });
+      const claudeData = await claudeRes.json();
+      nombreDetectado = claudeData?.content?.[0]?.text?.trim();
+      if (!nombreDetectado) throw new Error('Claude no identificó la especie.');
+    } catch (err) {
+      contenedor.innerHTML = errorBox(`No se pudo analizar la imagen: ${err.message}`);
+      return;
+    }
+
+    // ── Paso 3: /buscar_externo que ya funciona perfecto ──
+    try {
+      const res = await fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombreDetectado)}`, { headers: { 'x-api-key': API_KEY } });
+      if (!res.ok) {
+        const e = await res.json();
+        contenedor.innerHTML = errorBox(`Claude detectó "" pero: ${e.detail}`);
+        return;
+      }
+      const g = await res.json();
+      contenedor.innerHTML = `
+        <div class="card p-4 fade-up" style="border-left:3px solid var(--amber);">
+          ${g.foto_url ? `
+          <div style="margin:-1rem -1rem 0.75rem -1rem;border-radius:.875rem .875rem 0 0;overflow:hidden;height:180px;">
+            <img src="${g.foto_url}" alt="Foto"
+              style="width:100%;height:100%;object-fit:cover;display:block;"
+              onerror="this.parentElement.style.display='none'" />
+          </div>` : ''}
+          <p class="mono mb-2" style="font-size:.68rem;color:var(--amber);letter-spacing:.08em;">IDENTIFICACIÓN POR IMAGEN · IA</p>
+          <p class="mono mb-3" style="font-size:.7rem;color:var(--muted);">Claude detectó: <span style="color:var(--white);font-style:italic;"></span></p>
+          <table class="w-full text-sm" style="border-collapse:collapse;">
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
+              <td style="font-style:italic;font-weight:600;color:var(--white);">${g.nombre_cientifico}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
+              <td style="color:var(--text);">${g.familia}</td>
+            </tr>
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
+              <td style="color:var(--text);">${g.reino}</td>
+            </tr>
+            ${g.confianza != null ? `
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Confianza</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem;">
+                  <div style="flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:999px;">
+                    <div style="width:${g.confianza}%;height:100%;background:var(--neon);border-radius:999px;"></div>
+                  </div>
+                  <span class="mono" style="font-size:.75rem;color:var(--neon);">${g.confianza}%</span>
+                </div>
+              </td>
+            </tr>` : ''}
+            ${g.wikipedia_url ? `
+            <tr>
+              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Wikipedia</td>
+              <td>
+                <a href="${g.wikipedia_url}" target="_blank" rel="noopener"
+                  style="color:var(--cyan);font-size:.82rem;text-decoration:none;">
+                  🔗 Ver artículo completo
+                </a>
+              </td>
+            </tr>` : ''}
+          </table>
+          <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">Claude Vision + iNaturalist + GBIF</p>
+        </div>`;
+    } catch (err) {
+      contenedor.innerHTML = errorBox('No se pudo conectar con el servidor.');
+    }
+  }
+
+  /* ─── Registrar plaga ─── */
+  async function registrarPlaga() {
+    const nombre            = document.getElementById('f-nombre').value.trim();
+    const nombre_cientifico = document.getElementById('f-nombre-cientifico').value.trim();
+    const familia           = document.getElementById('f-familia').value.trim();
+    const reino             = document.getElementById('f-reino').value.trim();
+    const riesgo            = document.getElementById('f-riesgo').value;
+    const ficha_tecnica     = document.getElementById('f-ficha').value.trim();
+    const fecha             = document.getElementById('f-fecha').value;
+
+    if (!nombre || !nombre_cientifico || !familia || !reino || !riesgo || !ficha_tecnica || !fecha) {
+      showToast('Completa todos los campos antes de guardar.', 'error'); return;
+    }
+
+    try {
+      const latVal = document.getElementById('f-latitud').value;
+      const lngVal = document.getElementById('f-longitud').value;
+      const res = await fetch(`${API_BASE}/registrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({
+          nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha,
+          latitud:  latVal  ? parseFloat(latVal)  : null,
+          longitud: lngVal  ? parseFloat(lngVal)  : null,
+        }),
+      });
+      document.getElementById('f-riesgo').value = '';
+      document.getElementById('f-fecha').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('geo-status').textContent = '';
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
+    }
+  }
+
+  /* ════════════════════════════════════════
+     INTERNACIONALIZACIÓN (i18n)
+  ════════════════════════════════════════ */
+  const i18n = {
+    es: {
+      subtitulo:        'SISTEMA DE GESTIÓN DE PLAGAS · v1.0',
+      btn_pdf:          'REPORTE PDF',
+      tab_consultar:    'Consultar',
+      tab_imagen:       'Imagen',
+      tab_registrar:    'Registrar',
+      tab_mapa:         'Mapa',
+      // Consultar
+      titulo_consultar: '<span data-i18n="titulo_consultar">Consulta Integral de Plaga</span>',
+      desc_consultar:   'Ingresa un nombre y obtendrás simultáneamente los registros locales y la ficha científica de GBIF.',
+      placeholder_buscar: 'Ej: mosca blanca, Bemisia tabaci…',
+      btn_buscar:       'Buscar todo',
+      label_local:      'BD Local',
+      sub_local:        'bitácora interna',
+      label_gbif:       'GBIF',
+      sub_gbif:         'ficha científica',
+      // Imagen
+      titulo_imagen:    '<span data-i18n="titulo_imagen">Identificar Plaga por Imagen</span>',
+      desc_imagen:      'Sube una foto de la plaga y el sistema la identificará automáticamente usando inteligencia artificial.',
+      drop_title:       'Haz clic o arrastra una imagen aquí',
+      drop_sub:         'JPG, PNG, WEBP — máx. 5MB',
+      btn_identificar:  '🔍 Identificar plaga',
+      analizando:       'Analizando imagen con IA…',
+      // Registrar
+      titulo_registrar: '<span data-i18n="titulo_registrar">Registrar Nueva Plaga</span>',
+      desc_registrar:   'Añade un nuevo registro a la bitácora local de AgroGuard.',
+      label_nombre:     'NOMBRE *',
+      label_ncientifico:'NOMBRE CIENTÍFICO *',
+      label_familia:    'FAMILIA *',
+      label_reino:      'REINO *',
+      label_riesgo:     'RIESGO *',
+      label_fecha:      'FECHA *',
+      label_ficha:      'FICHA TÉCNICA *',
+      placeholder_ficha:'Describe características, síntomas, ciclo de vida, tratamiento recomendado…',
+      label_ubicacion:  'UBICACIÓN DEL FOCO',
+      btn_detectar:     '📍 Detectar',
+      btn_guardar:      '＋ Guardar en bitácora',
+      opt_seleccionar:  '— Seleccionar —',
+      opt_alto:         '🔴 Alto',
+      opt_medio:        '🟡 Medio',
+      opt_bajo:         '🟢 Bajo',
+      // Mapa
+      titulo_mapa:      '<span data-i18n="titulo_mapa">Mapa de Focos de Infección</span>',
+      desc_mapa:        'Visualiza todos los focos registrados con ubicación geográfica.',
+      btn_actualizar:   '↺ Actualizar mapa',
+      // Daltonismo
+      daltonismo_titulo:'MODO DALTONISMO',
+      f_normal:         '● Sin filtro',
+      f_protanopia:     '● Protanopia (rojo)',
+      f_deuteranopia:   '● Deuteranopia (verde)',
+      f_tritanopia:     '● Tritanopia (azul)',
+      f_achromatopsia:  '● Acromatopsia (sin color)',
+    },
+    en: {
+      subtitulo:        'PEST MANAGEMENT SYSTEM · v1.0',
+      btn_pdf:          'PDF REPORT',
+      tab_consultar:    'Search',
+      tab_imagen:       'Image',
+      tab_registrar:    'Register',
+      tab_mapa:         'Map',
+      titulo_consultar: 'Integrated Pest Search',
+      desc_consultar:   'Enter a name and get local records and scientific data from GBIF simultaneously.',
+      placeholder_buscar:'E.g.: whitefly, Bemisia tabaci…',
+      btn_buscar:       'Search all',
+      label_local:      'Local DB',
+      sub_local:        'internal log',
+      label_gbif:       'GBIF',
+      sub_gbif:         'scientific data',
+      titulo_imagen:    'Identify Pest by Image',
+      desc_imagen:      'Upload a photo of the pest and the system will identify it automatically using artificial intelligence.',
+      drop_title:       'Click or drag an image here',
+      drop_sub:         'JPG, PNG, WEBP — max 5MB',
+      btn_identificar:  '🔍 Identify pest',
+      analizando:       'Analyzing image with AI…',
+      titulo_registrar: 'Register New Pest',
+      desc_registrar:   'Add a new record to the AgroGuard local log.',
+      label_nombre:     'NAME *',
+      label_ncientifico:'SCIENTIFIC NAME *',
+      label_familia:    'FAMILY *',
+      label_reino:      'KINGDOM *',
+      label_riesgo:     'RISK *',
+      label_fecha:      'DATE *',
+      label_ficha:      'TECHNICAL SHEET *',
+      placeholder_ficha:'Describe characteristics, symptoms, life cycle, recommended treatment…',
+      label_ubicacion:  'OUTBREAK LOCATION',
+      btn_detectar:     '📍 Detect',
+      btn_guardar:      '＋ Save to log',
+      opt_seleccionar:  '— Select —',
+      opt_alto:         '🔴 High',
+      opt_medio:        '🟡 Medium',
+      opt_bajo:         '🟢 Low',
+      titulo_mapa:      'Infection Focus Map',
+      desc_mapa:        'View all registered outbreak locations on the map.',
+      btn_actualizar:   '↺ Refresh map',
+      riesgo_alto:      '🔴 High',
+      riesgo_medio:     '🟡 Medium',
+      riesgo_bajo:      '🟢 Low',
+      placeholder_lat:  'Latitude',
+      placeholder_lng:       'Longitude',
+      placeholder_ncientifico: 'E.g.: Bemisia tabaci',
+      placeholder_familia:     'E.g.: Aleyrodidae',
+      placeholder_reino:       'E.g.: Animalia',
+      daltonismo_titulo:       'COLORBLIND MODE',
+      f_normal:         '● No filter',
+      f_protanopia:     '● Protanopia (red)',
+      f_deuteranopia:   '● Deuteranopia (green)',
+      f_tritanopia:     '● Tritanopia (blue)',
+      f_achromatopsia:  '● Achromatopsia (no color)',
+    },
+    pt: {
+      subtitulo:        'SISTEMA DE GESTÃO DE PRAGAS · v1.0',
+      btn_pdf:          'RELATÓRIO PDF',
+      tab_consultar:    'Consultar',
+      tab_imagen:       'Imagem',
+      tab_registrar:    'Registrar',
+      tab_mapa:         'Mapa',
+      titulo_consultar: 'Consulta Integral de Pragas',
+      desc_consultar:   'Digite um nome e obtenha registros locais e dados científicos do GBIF simultaneamente.',
+      placeholder_buscar:'Ex: mosca branca, Bemisia tabaci…',
+      btn_buscar:       'Buscar tudo',
+      label_local:      'BD Local',
+      sub_local:        'diário interno',
+      label_gbif:       'GBIF',
+      sub_gbif:         'ficha científica',
+      titulo_imagen:    'Identificar Praga por Imagem',
+      desc_imagen:      'Envie uma foto da praga e o sistema a identificará automaticamente usando inteligência artificial.',
+      drop_title:       'Clique ou arraste uma imagem aqui',
+      drop_sub:         'JPG, PNG, WEBP — máx. 5MB',
+      btn_identificar:  '🔍 Identificar praga',
+      analizando:       'Analisando imagem com IA…',
+      titulo_registrar: 'Registrar Nova Praga',
+      desc_registrar:   'Adicione um novo registro ao diário local do AgroGuard.',
+      label_nombre:     'NOME *',
+      label_ncientifico:'NOME CIENTÍFICO *',
+      label_familia:    'FAMÍLIA *',
+      label_reino:      'REINO *',
+      label_riesgo:     'RISCO *',
+      label_fecha:      'DATA *',
+      label_ficha:      'FICHA TÉCNICA *',
+      placeholder_ficha:'Descreva características, sintomas, ciclo de vida, tratamento recomendado…',
+      label_ubicacion:  'LOCALIZAÇÃO DO FOCO',
+      btn_detectar:     '📍 Detectar',
+      btn_guardar:      '＋ Salvar no diário',
+      opt_seleccionar:  '— Selecionar —',
+      opt_alto:         '🔴 Alto',
+      opt_medio:        '🟡 Médio',
+      opt_bajo:         '🟢 Baixo',
+      titulo_mapa:      'Mapa de Focos de Infecção',
+      desc_mapa:        'Visualize todos os focos registrados com localização geográfica.',
+      btn_actualizar:   '↺ Atualizar mapa',
+      riesgo_alto:      '🔴 Alto',
+      riesgo_medio:     '🟡 Médio',
+      riesgo_bajo:      '🟢 Baixo',
+      placeholder_lat:  'Latitude',
+      placeholder_lng:       'Longitude',
+      placeholder_ncientifico: 'Ex: Bemisia tabaci',
+      placeholder_familia:     'Ex: Aleyrodidae',
+      placeholder_reino:       'Ex: Animalia',
+      daltonismo_titulo:       'MODO DALTONISMO',
+      f_normal:         '● Sem filtro',
+      f_protanopia:     '● Protanopia (vermelho)',
+      f_deuteranopia:   '● Deuteranopia (verde)',
+      f_tritanopia:     '● Tritanopia (azul)',
+      f_achromatopsia:  '● Acromatopsia (sem cor)',
+    }
+  };
+
+  let idiomaActual = 'es';
+
+function cambiarIdioma(lang) {
+  idiomaActual = lang;
+  const t = i18n[lang];
+
+  // Subtítulo del header
+  document.querySelectorAll('.mono').forEach(el => {
+    const txt = el.textContent;
+    if (txt.includes('SISTEMA DE') || txt.includes('PEST MANAGEMENT') || txt.includes('GESTÃO DE'))
+      el.textContent = t.subtitulo;
+  });
+
+  // Tabs
+  const tabTextos = { consultar: t.tab_consultar, imagen: t.tab_imagen, registrar: t.tab_registrar, mapa: t.tab_mapa };
+  const iconMap = { consultar: '⌕', imagen: '◈', registrar: '⊕', mapa: '◎' };
+Object.entries(tabTextos).forEach(([id, texto]) => {
+  const btn = document.getElementById(`tab-${id}`);
+  if (btn) {
+    btn.innerHTML = `<span style="margin-right:.35rem;">${iconMap[id]}</span> ${texto}`;
+  }
+});
+
+  // Todos los elementos con data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (!t[key]) return;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = t[key];
+    } else if (el.tagName === 'OPTION') {
+      el.textContent = t[key];
+    } else {
+      el.textContent = t[key];
+    }
+  });
+
+  // Idioma del lector de voz
+  const langVoz = { es: 'es-MX', en: 'en-US', pt: 'pt-BR' };
+  window._vozLang = langVoz[lang];
+  if (lectorActivo) speechSynthesis.cancel();
+
+  showToast(`🌐 ${lang === 'es' ? 'Español' : lang === 'en' ? 'English' : 'Português'}`, 'success');
+}
+
+  /* ════════════════════════════════════════
+     MODO CAMPO
+  ════════════════════════════════════════ */
+  let modoCampoActivo = false;
+  let reconocimientoVoz = null;
+
+  function toggleModoCampo() {
+    modoCampoActivo = !modoCampoActivo;
+    const overlay = document.getElementById('modo-campo-overlay');
+    const btn = document.getElementById('btn-campo');
+    if (modoCampoActivo) {
+      overlay.classList.remove('hidden');
+      btn.style.background = 'rgba(168,255,62,.2)';
+      btn.style.borderColor = 'rgba(168,255,62,.5)';
+      document.body.style.overflow = 'hidden';
+    } else {
+      overlay.classList.add('hidden');
+      btn.style.background = 'rgba(255,255,255,.08)';
+      btn.style.borderColor = 'rgba(255,255,255,.18)';
+      document.body.style.overflow = '';
+      document.getElementById('campo-resultado').classList.add('hidden');
+      document.getElementById('campo-voz-estado').classList.add('hidden');
+      detenerVoz();
+    }
+  }
+
+  function activarCamaraCampo() {
+    document.getElementById('campo-input-imagen').click();
+  }
+
+  async function procesarImagenCampo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    archivoImagen = file;
+    const resultado = document.getElementById('campo-resultado');
+    const contenido = document.getElementById('campo-resultado-contenido');
+    resultado.classList.remove('hidden');
+    contenido.innerHTML = `<div style="display:flex;align-items:center;gap:.75rem;"><div class="spinner"></div><p style="font-family:'Manrope',sans-serif;font-size:1rem;color:var(--text);">Identificando plaga…</p></div>`;
+
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 800;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 50,
+          messages: [{ role: 'user', content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+            { type: 'text', text: 'Identify the insect or pest in this image. Reply ONLY with the scientific name.' }
+          ]}]
+        })
+      });
+      const claudeData = await claudeRes.json();
+      const nombre = claudeData?.content?.[0]?.text?.trim();
+      if (!nombre) throw new Error();
+      const res = await fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombre)}`, { headers: { 'x-api-key': API_KEY } });
+      const g = await res.json();
+      contenido.innerHTML = `
+        <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">${g.nombre_cientifico}</p>
+        <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);margin-bottom:.5rem;">Familia: ${g.familia} · Reino: ${g.reino}</p>
+        ${g.confianza != null ? `<p style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--neon);">Confianza: ${g.confianza}%</p>` : ''}
+        ${g.wikipedia_url ? `<a href="${g.wikipedia_url}" target="_blank" style="color:var(--cyan);font-size:.85rem;">🔗 Ver más info</a>` : ''}`;
+    } catch {
+      contenido.innerHTML = `<p style="color:var(--red);font-family:'Manrope',sans-serif;">No se pudo identificar. Intenta de nuevo.</p>`;
+    }
+  }
+
+  function iniciarRegistroVoz() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showToast('Tu navegador no soporta reconocimiento de voz.', 'error'); return;
+    }
+    document.getElementById('campo-voz-estado').classList.remove('hidden');
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    reconocimientoVoz = new SR();
+    reconocimientoVoz.lang = window._vozLang || 'es-MX';
+    reconocimientoVoz.interimResults = true;
+    reconocimientoVoz.onresult = (e) => {
+      const t = e.results[0][0].transcript;
+      document.getElementById('campo-voz-texto').textContent = `""`;
+      if (e.results[0].isFinal) {
+        detenerVoz();
+        fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(t)}`, { headers: { 'x-api-key': API_KEY } }).then(r => r.json()).then(g => {
+          const resultado = document.getElementById('campo-resultado');
+          resultado.classList.remove('hidden');
+          document.getElementById('campo-resultado-contenido').innerHTML = `
+            <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">${g.nombre_cientifico}</p>
+            <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);">Familia: ${g.familia} · Reino: ${g.reino}</p>`;
+        }).catch(() => showToast('No se encontró información.', 'error'));
+      }
+    };
+    reconocimientoVoz.onerror = () => { detenerVoz(); showToast('Error de micrófono.', 'error'); };
+    reconocimientoVoz.start();
+  }
+
+  function detenerVoz() {
+    if (reconocimientoVoz) { reconocimientoVoz.stop(); reconocimientoVoz = null; }
+    document.getElementById('campo-voz-estado')?.classList.add('hidden');
+  }
+
+  function verMapaCampo() {
+    toggleModoCampo();
+    cambiarTab('mapa');
+    setTimeout(() => cargarMapa(), 300);
+  }
+
+  let lectorActivo = false;
+  let filtroActual = 'normal';
+
+  /* ─── Daltonismo ─── */
+  function toggleDaltonismo() {
+    const panel = document.getElementById('panel-accesibilidad');
+    panel.classList.toggle('hidden');
+  }
+
+function aplicarFiltro(tipo) {
+  // Quitar clase anterior
+  document.body.classList.remove(
+    'daltonismo-protanopia','daltonismo-deuteranopia',
+    'daltonismo-tritanopia','daltonismo-achromatopsia'
+  );
+  // Quitar activo de todos los botones
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'));
+
+  filtroActual = tipo;
+  if (tipo !== 'normal') {
+    document.body.classList.add(`daltonismo-${tipo}`);
+  }
+  document.getElementById(`f-${tipo}`)?.classList.add('activo');
+
+  const nombres = {
+    normal: 'Sin filtro',
+    protanopia: 'Protanopia',
+    deuteranopia: 'Deuteranopia',
+    tritanopia: 'Tritanopia',
+    achromatopsia: 'Acromatopsia'
+  };
+  showToast(`👁 Modo: ${nombres[tipo]}`, 'success');
+}
+
+  /* ─── Lector de voz ─── */
+  function toggleLectorVoz() {
+    lectorActivo = !lectorActivo;
+    const btn = document.getElementById('btn-voz');
+
+    if (lectorActivo) {
+      document.body.classList.add('lector-activo');
+      btn.style.background = 'rgba(184,244,88,.15)';
+      btn.style.borderColor = 'rgba(184,244,88,.4)';
+      btn.textContent = '🔇';
+      showToast('🔊 Lector de voz activado — hover para escuchar', 'success');
+
+      // Agregar listeners de voz a elementos con texto
+      document.querySelectorAll('p, h1, h2, td, label, button, a, .section-title').forEach(el => {
+        el.addEventListener('mouseenter', leerElemento);
+      });
+    } else {
+      document.body.classList.remove('lector-activo');
+      btn.style.background = 'rgba(255,255,255,.08)';
+      btn.style.borderColor = 'rgba(255,255,255,.18)';
+      btn.textContent = '🔊';
+      showToast('🔇 Lector de voz desactivado', 'success');
+      speechSynthesis.cancel();
+
+      document.querySelectorAll('p, h1, h2, td, label, button, a, .section-title').forEach(el => {
+        el.removeEventListener('mouseenter', leerElemento);
+      });
+    }
+  }
+
+  function leerElemento(e) {
+    const texto = e.currentTarget.innerText?.trim();
+    if (!texto || texto.length < 2) return;
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(texto);
+    utterance.lang = window._vozLang || 'es-MX';
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    speechSynthesis.speak(utterance);
+  }
+
+  function obtenerUbicacion() {
+    const status = document.getElementById('geo-status');
+    if (!navigator.geolocation) {
+      status.textContent = '⚠️ Tu navegador no soporta geolocalización.'; return;
+    }
+    status.textContent = '📡 Detectando ubicación...';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        document.getElementById('f-latitud').value  = pos.coords.latitude.toFixed(6);
+        document.getElementById('f-longitud').value = pos.coords.longitude.toFixed(6);
+        status.textContent = `✅ Ubicación detectada (precisión: ${Math.round(pos.coords.accuracy)}m)`;
+      },
+      err => { status.textContent = `⚠️ Error: ${err.message}`; },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+
+  function inicializarMapa(lat = 19.4326, lng = -99.1332) {
+    if (mapaLeaflet) { mapaLeaflet.remove(); mapaLeaflet = null; }
+    mapaLeaflet = L.map('mapa').setView([lat, lng], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 18,
+    }).addTo(mapaLeaflet);
+    return mapaLeaflet;
+  }
+
+  async function cargarMapa() {
+    const status = document.getElementById('mapa-status');
+    status.textContent = 'Cargando focos...';
+    const mapa = inicializarMapa();
+    try {
+      const res = await fetch(`${API_BASE}/focos`, { headers: { 'x-api-key': API_KEY } });
+      if (!res.ok) { status.textContent = 'No hay registros con ubicación aún.'; return; }
+      const focos = await res.json();
+      if (!focos.length) { status.textContent = 'No hay focos con ubicación registrada aún.'; return; }
+      const colores = { Alto: '#c0392b', Medio: '#d4821a', Bajo: '#3d5a2a' };
+      const bounds = [];
+      focos.forEach(f => {
+        const color = colores[f.riesgo] || '#555';
+        L.circleMarker([f.latitud, f.longitud], {
+          radius: 10, fillColor: color, color: '#fff',
+          weight: 2, opacity: 1, fillOpacity: 0.85,
+        }).addTo(mapa).bindPopup(`
+          <div style="font-family:sans-serif;min-width:180px;">
+            <p style="font-weight:700;margin:0 0 4px;color:;">${f.nombre_plaga}</p>
+            <p style="font-style:italic;font-size:.8rem;margin:0 0 6px;color:var(--muted);">${f.nombre_cientifico}</p>
+            <p style="font-size:.75rem;margin:0;"><b>Riesgo:</b> ${f.riesgo}</p>
+            <p style="font-size:.75rem;margin:0;"><b>Familia:</b> ${f.familia}</p>
+            <p style="font-size:.75rem;margin:2px 0 0;color:var(--muted);">${f.fecha}</p>
+          </div>`);
+        bounds.push([f.latitud, f.longitud]);
+      });
+      if (bounds.length) mapa.fitBounds(bounds, { padding: [40, 40] });
+      status.textContent = `${focos.length} foco(s) mostrado(s) en el mapa.`;
+    } catch (err) {
+      status.textContent = 'No se pudo conectar con el servidor.';
+    }
+  }
+
+
+</script>
+</body>
+</html>
