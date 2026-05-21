@@ -28,20 +28,22 @@ API_SECRET_KEY = os.getenv("API_SECRET_KEY")
 API_PUBLIC_KEY = os.getenv("API_PUBLIC_KEY")
 # Supabase client (uso de la clave anónima)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-if SUPABASE_URL and SUPABASE_KEY:
-    try:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        # Test a lightweight request to verify connectivity
-        _test_conn = supabase.table("bitacora_plagas").select("id").limit(1).execute()
-        if _test_conn.error:
-            raise Exception(_test_conn.error.message)
-    except Exception as exc:
-        # Si la conexión falla, desactivar Supabase y usar SQLite
-        print(f"⚠️ Supabase no disponible o no accesible: {exc}")
-        supabase = None
-else:
-    supabase = None
+# Accept either SUPABASE_KEY (as used before) or SUPABASE_ANON_KEY (the public anon key)
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+# En producción queremos FAIL FAST si la configuración de Supabase falta o falla
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise SystemExit("Supabase URL and key must be set in environment variables")
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    # Test a lightweight request to verify connectivity
+    _test_conn = supabase.table("bitacora_plagas").select("id").limit(1).execute()
+    if _test_conn.error:
+        raise Exception(_test_conn.error.message)
+    print("✅ Supabase conectado correctamente")
+except Exception as exc:
+    # Si la conexión falla, abortamos el arranque – no podemos seguir con SQLite en Vercel
+    print(f"⚠️ Supabase no disponible o no accesible: {exc}")
+    raise SystemExit("Supabase connection failed – aborting")
 
 # ─── BITÁCORA DE ERRORES (punto 4 del PDF) ───
 print("🚀 AgroGuard - Fase 1 (Staging)")
@@ -634,6 +636,14 @@ async def check_config():
         "cors_origin": ORIGEN_PERMITIDO,
         "version": "1.0.0 (Fase 1 completada)"
     }
+
+# Debug endpoint – permite comprobar rápidamente que Supabase está activo y responde
+@app.get("/debug/supabase")
+def debug_supabase():
+    if supabase:
+        r = supabase.table("bitacora_plagas").select("id").limit(1).execute()
+        return {"error": r.error, "data": r.data}
+    return {"status": "supabase client not initialised"}
 
 # ─────────────────────────────────────────────
 # Health check
