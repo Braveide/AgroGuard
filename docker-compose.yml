@@ -1,7 +1,17 @@
-version: "3.9"
+
 services:
   backend:
     build: .
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DB_PATH=agroguard.db
+      - ORIGEN_PERMITIDO=
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_ANON_KEY}
+      - API_PUBLIC_KEY=${API_PUBLIC_KEY}
+      - API_SECRET_KEY=${API_SECRET_KEY}
     env_file: .env
     ports:
       - "8000:8000"

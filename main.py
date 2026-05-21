@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, RedirectResponse, HTMLResponse, FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel
 from datetime import date, datetime
 import httpx
@@ -65,14 +65,27 @@ app = FastAPI(
     version="1.0.0 (Fase 1 - Staging)",
 )
 
-# CORS Configuración Total (Para solucionar el error de imágenes)
+# CORS – admite tanto desarrollo local como despliegue en Vercel
+# Si ORIGEN_PERMITIDO está definido (entorno de desarrollo) usamos la lista explícita,
+# de lo contrario, en producción permitimos cualquier origen (*) para que Vercel funcione.
+origenes_validos = (
+    ["*"]
+    if not os.getenv("ORIGEN_PERMITIDO")
+    else [
+        os.getenv("ORIGEN_PERMITIDO"),
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8000",
+    ]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ORIGEN_PERMITIDO] if ORIGEN_PERMITIDO else ["*"],
+    allow_origins=origenes_validos,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
 )
 
 # ─────────────────────────────────────────────
@@ -627,17 +640,7 @@ async def check_config():
 # ─────────────────────────────────────────────
 @app.get("/", tags=["General"])
 def root():
-    return RedirectResponse(url="/ui/")
+    return {"sistema": "AgroGuard", "estado": "activo", "version": "1.0.0 (Fase 1)"}
 @app.get("/healthz", tags=["General"])
 def healthz():
-    return {"status":"ok"}
-
-# Serve UI (index.html) under /ui/
-@app.get("/ui/", response_class=HTMLResponse)
-async def serve_ui():
-    return FileResponse("index.html", media_type="text/html")
-
-# Ensure /ui (without trailing slash) also works
-@app.get("/ui", include_in_schema=False)
-def ui_redirect():
-    return RedirectResponse(url="/ui/")
+    return {"status":"ok"}      
