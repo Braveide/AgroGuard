@@ -1514,57 +1514,24 @@ function aplicarFiltro(tipo) {
 
 
   function inicializarMapa(lat = 19.4326, lng = -99.1332) {
-    if (mapaLeaflet) { 
-        mapaLeaflet.remove(); 
-        mapaLeaflet = null; 
-    }
-    
+    if (mapaLeaflet) { mapaLeaflet.remove(); mapaLeaflet = null; }
     mapaLeaflet = L.map('mapa').setView([lat, lng], 5);
-    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors', 
-        maxZoom: 18,
+      attribution: '© OpenStreetMap contributors', maxZoom: 18,
     }).addTo(mapaLeaflet);
-    
     return mapaLeaflet;
-}
+  }
 
-async function cargarMapa() {
+  async function cargarMapa() {
     const status = document.getElementById('mapa-status');
     status.textContent = 'Cargando focos...';
-    
-    // Llamamos a la función directamente (ella ya configura la global 'mapaLeaflet')
-    inicializarMapa(); 
-    
+    const mapa = inicializarMapa();
     try {
-        // Quitamos los headers para que la petición a Render sea directa y limpia
-        const res = await fetch(`${API_BASE}/focos`);
-        
-        if (!res.ok) throw new Error("Error en la respuesta del servidor");
-        
-        const focos = await res.json();
-        
-        // Limpiamos el texto de carga
-        status.textContent = ''; 
-        
-        // Dibujamos los marcadores usando la variable global correcta
-        focos.forEach(foco => {
-            if (foco.latitud && foco.longitud) {
-                L.marker([foco.latitud, foco.longitud])
-                    .addTo(mapaLeaflet)
-                    .bindPopup(`
-                        <b>${foco.nombre_plaga || 'Plaga'}</b><br>
-                        Riesgo: ${foco.riesgo || 'No definido'}<br>
-                        Finca: ${foco.finca || 'Local'}
-                    `);
-            }
-        });
-
-    } catch (error) {
-        console.error("Error al cargar los focos del mapa:", error);
-        status.textContent = 'Error al cargar los datos del mapa.';
-    }
-}
+      const res = await fetch(`${API_BASE}/focos`, { 
+        headers: { 
+          'x-api-key': API_KEY
+        } 
+      });
       if (!res.ok) { status.textContent = 'No hay registros con ubicación aún.'; return; }
       const focos = await res.json();
       if (!focos.length) { status.textContent = 'No hay focos con ubicación registrada aún.'; return; }
