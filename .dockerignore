@@ -1,0 +1,13 @@
+# Excluir archivos que no deben copiarse al contenedor
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+*.db
+# Archivos de Vercel y build artefacts
+.vercel/
+vercel-build/

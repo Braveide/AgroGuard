@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   backend:
@@ -5,16 +6,15 @@ services:
     environment:
       - PORT=8000
       - HOST=0.0.0.0
-      - DB_PATH=agroguard.db
-      - ORIGEN_PERMITIDO=
+      - ORIGEN_PERMITIDO=https://impromptu-obituary-dramatize.ngrok-free.dev
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_URL=https://dpsrxnwgdwvrosolwjpd.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwc3J4bndnZHd2cm9zb2x3anBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMjgyMDEsImV4cCI6MjA5NDcwNDIwMX0.SVptLxfrKO1Nr5oQMT4LjdelF77QDmPP3oIzmwv6jzM
       - API_PUBLIC_KEY=${API_PUBLIC_KEY}
       - API_SECRET_KEY=${API_SECRET_KEY}
     env_file: .env
     ports:
-      - "8000:8000"
+      - "8080:8000"  # 🔥 CAMBIADO: Escucha en el puerto 8080 de Windows y lo manda al 8000 interno del contenedor
     restart: always
     networks:
       - agroguard-net
@@ -22,10 +22,9 @@ services:
   frontend:
     image: nginx:alpine
     ports:
-      - "5500:80"          # ← Cambia a 5500 para coincidir con ORIGEN_PERMITIDO
+      - "5500:80"          # Expone el puerto de Nginx localmente en el 5500
     volumes:
-      - ./index.html:/usr/share/nginx/html/index.html
-      - ./:/usr/share/nginx/html
+      - ./index.html:/usr/share/nginx/html/index.html  # Mapea únicamente el HTML de forma segura
     depends_on:
       - backend
     networks:

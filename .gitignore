@@ -9,15 +9,12 @@ __pycache__/
 .venv/
 venv/
 
-# Docker artefacts
-Dockerfile
-.dockerignore
-
 # Secrets / env files
 .env
 
 # SQLite (solo para pruebas locales)
 *.db
+agroguard.db
 
 # Vercel build artefacts
 .vercel/

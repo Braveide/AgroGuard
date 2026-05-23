@@ -14,49 +14,46 @@ from fpdf import FPDF
 import sqlite3
 
 # ─────────────────────────────────────────────
-# CARGAR VARIABLES DE ENTORNO (Fase 1 - Obligatorio)
+# CARGAR VARIABLES DE ENTORNO (Adaptado para Render)
 # ─────────────────────────────────────────────
 load_dotenv()
 
-# Variables desde .env
-PORT = int(os.getenv("PORT", 8000))
-HOST = os.getenv("HOST", "0.0.0.0")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-DB_PATH = os.getenv("DB_PATH", "agroguard.db")
-ORIGEN_PERMITIDO = os.getenv("ORIGEN_PERMITIDO")
-API_SECRET_KEY = os.getenv("API_SECRET_KEY")
-API_PUBLIC_KEY = os.getenv("API_PUBLIC_KEY")
-# Supabase client (uso de la clave anónima)
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-# Accept either SUPABASE_KEY (as used before) or SUPABASE_ANON_KEY (the public anon key)
-SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
-# En producción queremos FAIL FAST si la configuración de Supabase falta o falla
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise SystemExit("Supabase URL and key must be set in environment variables")
-try:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    # Test a lightweight request to verify connectivity
-    _test_conn = supabase.table("bitacora_plagas").select("id").limit(1).execute()
-    if _test_conn.error:
-        raise Exception(_test_conn.error.message)
-    print("✅ Supabase conectado correctamente")
-except Exception as exc:
-    # Si la conexión falla, abortamos el arranque – no podemos seguir con SQLite en Vercel
-    print(f"⚠️ Supabase no disponible o no accesible: {exc}")
-    raise SystemExit("Supabase connection failed – aborting")
+# Prioriza las variables del sistema de Render, si no existen usa el fallback
+PORT = int(os.environ.get("PORT", os.getenv("PORT", 8000)))
+HOST = os.environ.get("HOST", os.getenv("HOST", "0.0.0.0"))
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY"))
+DB_PATH = os.environ.get("DB_PATH", os.getenv("DB_PATH", "agroguard.db"))
+ORIGEN_PERMITIDO = os.environ.get("ORIGEN_PERMITIDO", os.getenv("ORIGEN_PERMITIDO", "*"))
+API_SECRET_KEY = os.environ.get("API_SECRET_KEY", os.getenv("API_SECRET_KEY"))
+API_PUBLIC_KEY = os.environ.get("API_PUBLIC_KEY", os.getenv("API_PUBLIC_KEY"))
 
-# ─── BITÁCORA DE ERRORES (punto 4 del PDF) ───
-print("🚀 AgroGuard - Fase 1 (Staging)")
-print("✅ Variables de entorno cargadas correctamente:")
-print(f"   PORT              → {PORT}")
-print(f"   HOST              → {HOST}")
-print(f"   DB_PATH           → {DB_PATH}")
-print(f"   ORIGEN_PERMITIDO  → {ORIGEN_PERMITIDO}")
-print(f"   GEMINI_API_KEY    → {'✅ CONFIGURADO' if GEMINI_API_KEY else '❌ NO ENCONTRADO'}")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY"))
 
+# ─────────────────────────────────────────────
+# VALIDACIÓN DE CONEXIÓN A SUPABASE
+# ─────────────────────────────────────────────
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase.table("bitacora_plagas").select("id").limit(1).execute()
+        print("✅ Conexión inicial con Supabase establecida con éxito.")
+    except Exception as e:
+        print(f"⚠️ Supabase no disponible o no accesible de forma inicial: {e}")
+        supabase = None
+
+print("🚀 AgroGuard - Listo para Render")
+print("✅ Variables de entorno procesadas:")
+print(f"    PORT             → {PORT}")
+print(f"    HOST             → {HOST}")
+print(f"    ORIGEN_PERMITIDO → {ORIGEN_PERMITIDO}")
+print(f"    GEMINI_API_KEY    → {'✅ CONFIGURADO' if GEMINI_API_KEY else '❌ NO ENCONTRADO'}")
+
+# Validación segura para el despliegue en la nube
 if not GEMINI_API_KEY:
-    print("❌ ERROR CRÍTICO: GEMINI_API_KEY no está en el archivo .env")
-    raise SystemExit(1)
+    print("❌ ERROR CRÍTICO: GEMINI_API_KEY no detectada en las variables del entorno.")
+    # No lanzamos SystemExit de inmediato para permitir que el contenedor se mantenga vivo y reporte el estado en Render
 
 # ─────────────────────────────────────────────
 # Configuración de la aplicación
@@ -64,34 +61,23 @@ if not GEMINI_API_KEY:
 app = FastAPI(
     title="AgroGuard API",
     description="Sistema de gestión y consulta de plagas agrícolas",
-    version="1.0.0 (Fase 1 - Staging)",
+    version="1.0.0 (Producción Render)",
 )
 
-# CORS – admite tanto desarrollo local como despliegue en Vercel
-# Si ORIGEN_PERMITIDO está definido (entorno de desarrollo) usamos la lista explícita,
-# de lo contrario, en producción permitimos cualquier origen (*) para que Vercel funcione.
-origenes_validos = (
-    ["*"]
-    if not os.getenv("ORIGEN_PERMITIDO")
-    else [
-        os.getenv("ORIGEN_PERMITIDO"),
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://localhost:8000",
-    ]
-)
+# CORS Adaptivo: Permite localhost para pruebas y el dominio de tu frontend en Render
+orígenes = ["*"] if ORIGEN_PERMITIDO == "*" else [ORIGEN_PERMITIDO, "http://localhost:5500", "http://127.0.0.1:5500"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origenes_validos,
+    allow_origins=orígenes,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
+    expose_headers=["*"]
 )
 
 # ─────────────────────────────────────────────
-# Base de datos SQLite (usa DB_PATH del .env)
+# Base de datos SQLite Local (Fallback de seguridad)
 # ─────────────────────────────────────────────
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
@@ -155,32 +141,32 @@ class RespuestaGBIF(BaseModel):
     nombre_cientifico: str
     familia: str
     reino: str
-    confianza: int | None = None
+    ctnfianza: int | None = None  # Se mapeará con data.get("confidence")
     foto_url: str | None = None
     wikipedia_url: str | None = None
 
 # ─────────────────────────────────────────────
-# Helper: extraer texto de respuesta Gemini
+# Helpers y Seguridad
 # ─────────────────────────────────────────────
 def extraer_texto_gemini(gemini_data: dict) -> str:
     try:
-        partes = gemini_data["candidates"][0]["content"]["parts"]
+        partes = gemini_data["contents"][0]["parts"] if "contents" in gemini_data else gemini_data["candidates"][0]["content"]["parts"]
         for parte in partes:
             if parte.get("text") and not parte.get("thought", False):
                 texto = parte["text"].strip()
-                if texto:
-                    return texto
+                if texto: return texto
+    except (KeyError, IndexError, TypeError):
+        pass
+    try:
+        partes = gemini_data["candidates"][0]["content"]["parts"]
         for parte in partes:
             if parte.get("text"):
                 texto = parte["text"].strip()
-                if texto:
-                    return texto
+                if texto: return texto
     except (KeyError, IndexError, TypeError):
         pass
     return ""
-# ─────────────────────────────────────────────
-# Seguridad: verificación de API key
-# ─────────────────────────────────────────────
+
 def verify_api_key(x_api_key: str = Header(...)):
     if not API_SECRET_KEY:
         raise HTTPException(status_code=500, detail="API secret not configured")
@@ -188,9 +174,6 @@ def verify_api_key(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
 
-# ─────────────────────────────────────────────
-# Seguridad: verificación de API key pública (para acciones de usuarios)
-# ─────────────────────────────────────────────
 def verify_public_key(x_api_key: str = Header(...)):
     if not API_PUBLIC_KEY:
         raise HTTPException(status_code=500, detail="API public key not configured")
@@ -198,9 +181,6 @@ def verify_public_key(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
 
-# ─────────────────────────────────────────────
-# iNaturalist helper
-# ─────────────────────────────────────────────
 async def traducir_con_inaturalist(nombre: str, client: httpx.AsyncClient) -> dict:
     resultado = {"nombre": nombre, "foto_url": None, "wikipedia_url": None}
     try:
@@ -222,12 +202,96 @@ async def traducir_con_inaturalist(nombre: str, client: httpx.AsyncClient) -> di
         pass
     return resultado
 
+def limpiar_texto(texto: str) -> str:
+    if not texto:
+        return ""
+    reemplazos = {
+        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+        'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
+        'ñ': 'n', 'Ñ': 'N', 'ü': 'u', 'Ü': 'U',
+        '–': '-', '—': '-', '\u2019': "'", '\u201c': '"', '\u201d': '"',
+        '°': ' ', '©': '(c)', '®': '(R)', '€': 'EUR',
+    }
+    for orig, reemplazo in reemplazos.items():
+        texto = texto.replace(orig, reemplazo)
+    return texto.encode('latin-1', errors='replace').decode('latin-1')
+
 # ─────────────────────────────────────────────
-# Endpoint externo (iNaturalist → GBIF)
+# Endpoints de la API
 # ─────────────────────────────────────────────
+
+@app.post(
+    "/registrar",
+    response_model=RespuestaPlaga,
+    summary="Registra una nueva plaga en la bitácora",
+    tags=["Fase 3 – Persistencia"],
+    dependencies=[Depends(verify_public_key)]
+)
+async def registrar_plaga(plaga: RegistroPlaga):
+    payload = {
+        "nombre_plaga": plaga.nombre_plaga,
+        "nombre_cientifico": plaga.nombre_cientifico,
+        "familia": plaga.familia,
+        "reino": plaga.reino,
+        "riesgo": plaga.riesgo,
+        "ficha_tecnica": plaga.ficha_tecnica,
+        "fecha": str(plaga.fecha),
+        "latitud": plaga.latitud if plaga.latitud is not None else 0.0,
+        "longitud": plaga.longitud if plaga.longitud is not None else 0.0
+    }
+
+    if supabase:
+        try:
+            result = supabase.table("bitacora_plagas").insert(payload).execute()
+            if not result.data:
+                raise HTTPException(status_code=500, detail="No se recibieron datos de vuelta desde Supabase.")
+            datos_guardados = result.data[0]
+            return RespuestaPlaga(
+                id=datos_guardados["id"],
+                nombre_plaga=datos_guardados["nombre_plaga"],
+                nombre_cientifico=datos_guardados["nombre_cientifico"],
+                familia=datos_guardados.get("familia", datos_guardados.get("family", "")),
+                reino=datos_guardados.get("reino", datos_guardados.get("kingdom", "")),
+                riesgo=datos_guardados["riesgo"],
+                ficha_tecnica=datos_guardados["ficha_tecnica"],
+                fecha=str(datos_guardados["fecha"]),
+                latitud=float(datos_guardados.get("latitud", 0.0)) if datos_guardados.get("latitud") is not None else 0.0,
+                longitud=float(datos_guardados.get("longitud", 0.0)) if datos_guardados.get("longitud") is not None else 0.0
+            )
+        except Exception as e:
+            print(f"❌ Error al insertar en Supabase: {e}")
+            raise HTTPException(status_code=400, detail=f"Error en base de datos externa: {str(e)}")
+    else:
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO bitacora_plagas (nombre_plaga, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha, latitud, longitud)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (plaga.nombre_plaga, plaga.nombre_cientifico, plaga.familia, plaga.reino, plaga.riesgo, plaga.ficha_tecnica, str(plaga.fecha), plaga.latitud, plaga.longitud)
+            )
+            conn.commit()
+            nuevo_id = cursor.lastrowid
+        finally:
+            conn.close()
+
+        return RespuestaPlaga(
+            id=nuevo_id,
+            nombre_plaga=plaga.nombre_plaga,
+            nombre_cientifico=plaga.nombre_cientifico,
+            familia=plaga.familia,
+            reino=plaga.reino,
+            riesgo=plaga.riesgo,
+            ficha_tecnica=plaga.ficha_tecnica,
+            fecha=str(plaga.fecha),
+            latitud=plaga.latitud if plaga.latitud is not None else 0.0,
+            longitud=plaga.longitud if plaga.longitud is not None else 0.0
+        )
+
 @app.get(
     "/buscar_externo/{nombre}",
-    response_model=RespuestaGBIF,
     summary="Consulta ficha científica (iNaturalist → GBIF)",
     tags=["Fase 2 – API Externa"],
 )
@@ -255,158 +319,132 @@ async def buscar_externo(nombre: str):
             detail=f"No se encontró información para '{nombre}' (buscado como '{nombre_cientifico_traducido}').",
         )
 
-    return RespuestaGBIF(
-        nombre_cientifico=data.get("scientificName", "Desconocido"),
-        familia=data.get("family", "Desconocida"),
-        reino=data.get("kingdom", "Desconocido"),
-        confianza=data.get("confidence"),
-        foto_url=inaturalist["foto_url"],
-        wikipedia_url=inaturalist["wikipedia_url"],
-    )
-
-# ─────────────────────────────────────────────
-# Endpoints de persistencia (sin cambios)
-# ─────────────────────────────────────────────
-@app.post("/registrar", response_model=RespuestaPlaga, status_code=201, summary="Registra una plaga en la bitácora", tags=["Fase 3 – Persistencia"], dependencies=[Depends(verify_public_key)])
-def registrar_plaga(plaga: RegistroPlaga):
-    # Si Supabase está configurado, usarlo; de lo contrario, usar SQLite local
-    if supabase:
-        payload = {
-            "nombre_plaga": plaga.nombre_plaga,
-            "nombre_cientifico": plaga.nombre_cientifico,
-            "familia": plaga.familia,
-            "reino": plaga.reino,
-            "riesgo": plaga.riesgo,
-            "ficha_tecnica": plaga.ficha_tecnica,
-            "fecha": str(plaga.fecha),
-            "latitud": plaga.latitud,
-            "longitud": plaga.longitud,
-        }
-        result = supabase.table("bitacora_plagas").insert(payload).execute()
-        if result.error:
-            raise HTTPException(status_code=500, detail=result.error.message)
-        nuevo_id = result.data[0]["id"]
-    else:
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute(
-                """
-                INSERT INTO bitacora_plagas (nombre_plaga, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha, latitud, longitud)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (plaga.nombre_plaga, plaga.nombre_cientifico, plaga.familia, plaga.reino, plaga.riesgo, plaga.ficha_tecnica, str(plaga.fecha), plaga.latitud, plaga.longitud)
-            )
-            conn.commit()
-            nuevo_id = cursor.lastrowid
-        finally:
-            conn.close()
-
-    return RespuestaPlaga(
-        id=nuevo_id,
-        nombre_plaga=plaga.nombre_plaga,
-        nombre_cientifico=plaga.nombre_cientifico,
-        familia=plaga.familia,
-        reino=plaga.reino,
-        riesgo=plaga.riesgo,
-        ficha_tecnica=plaga.ficha_tecnica,
-        fecha=str(plaga.fecha),
-        latitud=plaga.latitud,
-        longitud=plaga.longitud,
-    )
-
-# (Los demás endpoints /focos, /consultar, /registros, /actualizar, /eliminar se mantienen exactamente igual que en tu versión original)
+    return {
+        "nombre_cientifico": data.get("scientificName", "Desconocido"),
+        "familia": data.get("family", "Desconocida"),
+        "reino": data.get("kingdom", "Desconocido"),
+        "confianza": data.get("confidence"),
+        "foto_url": inaturalist["foto_url"],
+        "wikipedia_url": inaturalist["wikipedia_url"],
+    }
 
 @app.get("/focos", response_model=list[RespuestaPlaga], summary="Devuelve todos los registros con coordenadas para el mapa", tags=["Geolocalización"])
-def obtener_focos():
-    # Usar Supabase si está disponible; de lo contrario, SQLite local
+async def obtener_focos():
+    rows = []
     if supabase:
-        result = supabase.table("bitacora_plagas").select("*").order("fecha", desc=True).execute()
-        if result.error:
-            raise HTTPException(status_code=500, detail=result.error.message)
-        # Filtrar registros con latitud y longitud no nulas
-        rows = [r for r in result.data if r.get("latitud") is not None and r.get("longitud") is not None]
+        try:
+            result = supabase.table("bitacora_plagas").select("*").order("fecha", desc=True).execute()
+            for r in result.data:
+                lat = r.get("latitud") if r.get("latitud") is not None else r.get("lat", 0.0)
+                lng = r.get("longitud") if r.get("longitud") is not None else r.get("lng", 0.0)
+                
+                r["latitud"] = float(lat) if lat else 0.0
+                r["longitud"] = float(lng) if lng else 0.0
+                r["familia"] = r.get("familia", r.get("family", "Desconocida"))
+                r["reino"] = r.get("reino", r.get("kingdom", "Desconocido"))
+                rows.append(r)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     else:
         conn = get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("""
-                SELECT id, nombre_plaga, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha, latitud, longitud
-                FROM bitacora_plagas
-                WHERE latitud IS NOT NULL AND longitud IS NOT NULL
-                ORDER BY fecha DESC
-            """)
-            rows = cursor.fetchall()
+            cursor.execute("SELECT * FROM bitacora_plagas ORDER BY fecha DESC")
+            for r in cursor.fetchall():
+                d = dict(r)
+                d["latitud"] = d.get("latitud") if d.get("latitud") is not None else 0.0
+                d["longitud"] = d.get("longitud") if d.get("longitud") is not None else 0.0
+                rows.append(d)
         finally:
             conn.close()
 
-    return [RespuestaPlaga(**dict(r) if isinstance(r, sqlite3.Row) else r) for r in rows]
+    return [RespuestaPlaga(**r) for r in rows]
 
-@app.get("/consultar/{nombre}", response_model=list[RespuestaPlaga], summary="Consulta registros locales por nombre de plaga", tags=["Fase 3 – Persistencia"])
-def consultar_plaga(nombre: str):
-    # Si Supabase está disponible, usarlo; de lo contrario, usar SQLite
+@app.get("/buscar_local/{nombre}", response_model=list[RespuestaPlaga], summary="Consulta registros locales por nombre de plaga", tags=["Fase 3 – Persistencia"])
+async def consultar_plaga(nombre: str):
+    rows = []
     if supabase:
-        result = supabase.table("bitacora_plagas").select("*").ilike("nombre_plaga", f"%{nombre}%").order("fecha", desc=True).execute()
-        if result.error:
-            raise HTTPException(status_code=500, detail=result.error.message)
-        rows = result.data
+        try:
+            result = supabase.table("bitacora_plagas").select("*").ilike("nombre_plaga", f"%{nombre}%").order("fecha", desc=True).execute()
+            if result.data:
+                for r in result.data:
+                    lat = r.get("latitud") if r.get("latitud") is not None else r.get("lat", 0.0)
+                    lng = r.get("longitud") if r.get("longitud") is not None else r.get("lng", 0.0)
+                    
+                    r["latitud"] = float(lat) if lat else 0.0
+                    r["longitud"] = float(lng) if lng else 0.0
+                    r["familia"] = r.get("familia", r.get("family", "Desconocida"))
+                    r["reino"] = r.get("reino", r.get("kingdom", "Desconocido"))
+                    rows.append(r)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     else:
         conn = get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute("SELECT * FROM bitacora_plagas WHERE nombre_plaga LIKE ? ORDER BY fecha DESC", (f"%{nombre}%",))
-            rows = cursor.fetchall()
+            for r in cursor.fetchall():
+                d = dict(r)
+                d["latitud"] = d.get("latitud") if d.get("latitud") is not None else 0.0
+                d["longitud"] = d.get("longitud") if d.get("longitud") is not None else 0.0
+                rows.append(d)
         finally:
             conn.close()
 
-    if not rows:
-        raise HTTPException(status_code=404, detail=f"No se encontraron registros locales para '{nombre}'.")
-
-    # rows may be sqlite3.Row or dict; normalize
-    return [RespuestaPlaga(**dict(r) if isinstance(r, sqlite3.Row) else r) for r in rows]
+    return [RespuestaPlaga(**r) for r in rows]
 
 @app.get("/registros", response_model=list[RespuestaPlaga], summary="Lista todos los registros de la bitácora", tags=["Fase 3 – Persistencia"])
-def listar_registros():
-    # Usar Supabase si está configurado
+async def listar_registros():
+    rows = []
     if supabase:
-        result = supabase.table("bitacora_plagas").select("id,nombre_plaga,nombre_cientifico,familia,reino,riesgo,ficha_tecnica,fecha").order("fecha", desc=True).execute()
-        if result.error:
-            raise HTTPException(status_code=500, detail=result.error.message)
-        rows = result.data
+        try:
+            result = supabase.table("bitacora_plagas").select("*").order("fecha", desc=True).execute()
+            for r in result.data:
+                lat = r.get("latitud") if r.get("latitud") is not None else r.get("lat", 0.0)
+                lng = r.get("longitud") if r.get("longitud") is not None else r.get("lng", 0.0)
+                
+                r["latitud"] = float(lat) if lat else 0.0
+                r["longitud"] = float(lng) if lng else 0.0
+                r["familia"] = r.get("familia", r.get("family", "Desconocida"))
+                r["reino"] = r.get("reino", r.get("kingdom", "Desconocido"))
+                rows.append(r)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     else:
         conn = get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT id, nombre_plaga, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha FROM bitacora_plagas ORDER BY fecha DESC")
-            rows = cursor.fetchall()
+            cursor.execute("SELECT id, nombre_plaga, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha, latitud, longitud FROM bitacora_plagas ORDER BY fecha DESC")
+            for r in cursor.fetchall():
+                d = dict(r)
+                d["latitud"] = d.get("latitud") if d.get("latitud") is not None else 0.0
+                d["longitud"] = d.get("longitud") if d.get("longitud") is not None else 0.0
+                rows.append(d)
         finally:
             conn.close()
-    # Normalizar filas
-    return [RespuestaPlaga(**dict(r) if isinstance(r, sqlite3.Row) else r) for r in rows]
+    return [RespuestaPlaga(**r) for r in rows]
 
 @app.put("/actualizar/{id}", response_model=RespuestaPlaga, summary="Actualiza un registro existente", tags=["Fase 3 – Persistencia"], dependencies=[Depends(verify_public_key)])
-def actualizar_plaga(id: int, plaga: RegistroPlaga):
-    # Si Supabase está disponible, usarlo; de lo contrario, usar SQLite
+async def actualizar_plaga(id: int, plaga: RegistroPlaga):
+    payload = {
+        "nombre_plaga": plaga.nombre_plaga,
+        "nombre_cientifico": plaga.nombre_cientifico,
+        "familia": plaga.familia,
+        "reino": plaga.reino,
+        "riesgo": plaga.riesgo,
+        "ficha_tecnica": plaga.ficha_tecnica,
+        "fecha": str(plaga.fecha),
+        "latitud": plaga.latitud if plaga.latitud is not None else 0.0,
+        "longitud": plaga.longitud if plaga.longitud is not None else 0.0
+    }
     if supabase:
-        # Verificar existencia
-        exist_res = supabase.table("bitacora_plagas").select("id").eq("id", id).execute()
-        if exist_res.error:
-            raise HTTPException(status_code=500, detail=exist_res.error.message)
-        if not exist_res.data:
-            raise HTTPException(status_code=404, detail=f"No existe un registro con id={id}.")
-        # Actualizar registro
-        payload = {
-            "nombre_plaga": plaga.nombre_plaga,
-            "nombre_cientifico": plaga.nombre_cientifico,
-            "familia": plaga.familia,
-            "reino": plaga.reino,
-            "riesgo": plaga.riesgo,
-            "ficha_tecnica": plaga.ficha_tecnica,
-            "fecha": str(plaga.fecha),
-        }
-        update_res = supabase.table("bitacora_plagas").update(payload).eq("id", id).execute()
-        if update_res.error:
-            raise HTTPException(status_code=500, detail=update_res.error.message)
+        try:
+            exist_res = supabase.table("bitacora_plagas").select("id").eq("id", id).execute()
+            if not exist_res.data:
+                raise HTTPException(status_code=404, detail=f"No existe un registro con id={id}.")
+            supabase.table("bitacora_plagas").update(payload).eq("id", id).execute()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     else:
         conn = get_connection()
         cursor = conn.cursor()
@@ -416,29 +454,36 @@ def actualizar_plaga(id: int, plaga: RegistroPlaga):
                 raise HTTPException(status_code=404, detail=f"No existe un registro con id={id}.")
 
             cursor.execute(
-                "UPDATE bitacora_plagas SET nombre_plaga=?, nombre_cientifico=?, familia=?, reino=?, riesgo=?, ficha_tecnica=?, fecha=? WHERE id=?",
-                (plaga.nombre_plaga, plaga.nombre_cientifico, plaga.familia, plaga.reino, plaga.riesgo, plaga.ficha_tecnica, str(plaga.fecha), id)
+                "UPDATE bitacora_plagas SET nombre_plaga=?, nombre_cientifico=?, familia=?, reino=?, riesgo=?, ficha_tecnica=?, fecha=?, latitud=?, longitud=? WHERE id=?",
+                (plaga.nombre_plaga, plaga.nombre_cientifico, plaga.familia, plaga.reino, plaga.riesgo, plaga.ficha_tecnica, str(plaga.fecha), plaga.latitud, plaga.longitud, id)
             )
             conn.commit()
         finally:
             conn.close()
 
-    return RespuestaPlaga(id=id, **plaga.model_dump())
+    return RespuestaPlaga(
+        id=id,
+        nombre_plaga=plaga.nombre_plaga,
+        nombre_cientifico=plaga.nombre_cientifico,
+        familia=plaga.familia,
+        reino=plaga.reino,
+        riesgo=plaga.riesgo,
+        ficha_tecnica=plaga.ficha_tecnica,
+        fecha=str(plaga.fecha),
+        latitud=plaga.latitud if plaga.latitud is not None else 0.0,
+        longitud=plaga.longitud if plaga.longitud is not None else 0.0
+    )
 
 @app.delete("/eliminar/{id}", summary="Elimina un registro de la bitácora", tags=["Fase 3 – Persistencia"], dependencies=[Depends(verify_public_key)])
-def eliminar_plaga(id: int):
-    # Eliminar usando Supabase si está disponible
+async def eliminar_plaga(id: int):
     if supabase:
-        # Verificar existencia
-        exist_res = supabase.table("bitacora_plagas").select("id").eq("id", id).execute()
-        if exist_res.error:
-            raise HTTPException(status_code=500, detail=exist_res.error.message)
-        if not exist_res.data:
-            raise HTTPException(status_code=404, detail=f"No existe un registro con id={id}.")
-        # Eliminar
-        del_res = supabase.table("bitacora_plagas").delete().eq("id", id).execute()
-        if del_res.error:
-            raise HTTPException(status_code=500, detail=del_res.error.message)
+        try:
+            exist_res = supabase.table("bitacora_plagas").select("id").eq("id", id).execute()
+            if not exist_res.data:
+                raise HTTPException(status_code=404, detail=f"No existe un registro con id={id}.")
+            supabase.table("bitacora_plagas").delete().eq("id", id).execute()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     else:
         conn = get_connection()
         cursor = conn.cursor()
@@ -452,9 +497,6 @@ def eliminar_plaga(id: int):
             conn.close()
     return {"mensaje": f"Registro #{id} eliminado correctamente."}
 
-# ─────────────────────────────────────────────
-# Identificación por imagen (Gemini + iNaturalist + GBIF)
-# ─────────────────────────────────────────────
 @app.post(
     "/identificar_imagen",
     response_model=RespuestaGBIF,
@@ -494,7 +536,7 @@ async def identificar_imagen(imagen: UploadFile = File(...)):
         nombre_detectado = extraer_texto_gemini(gemini_data)
 
         if not nombre_detectado:
-            raise HTTPException(status_code=422, detail="Gemini no pudo identificar la especie en la imagen.")
+            raise HTTPException(status_code=422, detail="Gemini no pudo identificar la especie in the image.")
 
         inaturalist = await traducir_con_inaturalist(nombre_detectado, client)
         nombre_cientifico_final = inaturalist["nombre"]
@@ -516,48 +558,18 @@ async def identificar_imagen(imagen: UploadFile = File(...)):
     )
 
 # ─────────────────────────────────────────────
-# Reporte PDF (sin cambios)
+# Módulo Reporte PDF
 # ─────────────────────────────────────────────
-def limpiar_texto(texto: str) -> str:
-    if not texto:
-        return ""
-    # Reemplazos de caracteres especiales
-    reemplazos = {
-        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-        'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
-        'ñ': 'n', 'Ñ': 'N', 'ü': 'u', 'Ü': 'U',
-        '–': '-', '—': '-', '\u2019': "'", '\u201c': '"', '\u201d': '"',
-        '°': ' ', '©': '(c)', '®': '(R)', '€': 'EUR',
-    }
-    for orig, reemplazo in reemplazos.items():
-        texto = texto.replace(orig, reemplazo)
-    return texto.encode('latin-1', errors='replace').decode('latin-1')
-
-# ─────────────────────────────────────────────
-# Seguridad: verificación de API key
-# ─────────────────────────────────────────────
-def verify_api_key(x_api_key: str = Header(...)):
-    if not API_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="API secret not configured")
-    if x_api_key != API_SECRET_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return True
-
-# Removed misplaced decorator
 class PDFReport(FPDF):
     def header(self):
-        # Logo opcional: si tienes un archivo logo.png en la raíz, descomenta la línea siguiente
-        # self.image('logo.png', x=10, y=8, w=20)
         self.set_font('Helvetica', 'B', 14)
         self.cell(0, 10, 'Reporte AgroGuard', ln=1, align='C')
-        # Fecha de generación
         self.set_font('Helvetica', '', 10)
         self.set_text_color(100, 100, 100)
         self.cell(0, 5, f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=1, align='C')
         self.ln(5)
 
     def footer(self):
-        # Posicionar a 1.5 cm del fondo
         self.set_y(-15)
         self.set_font('Helvetica', 'I', 8)
         self.set_text_color(150, 150, 150)
@@ -567,29 +579,28 @@ class PDFReport(FPDF):
     "/reporte_pdf",
     summary="Genera un reporte PDF de la bitácora",
     tags=["Reportes"],
-
 )
 def generar_reporte_pdf():
-    # Recuperar datos usando Supabase si está configurado, de lo contrario usar SQLite
+    registros = []
     if supabase:
-        result = supabase.table("bitacora_plagas").select("id,nombre_plaga,nombre_cientifico,familia,reino,riesgo,ficha_tecnica,fecha").order("fecha", desc=True).execute()
-        if result.error:
-            raise HTTPException(status_code=500, detail=result.error.message)
-        registros = result.data
+        try:
+            result = supabase.table("bitacora_plagas").select("id,nombre_plaga,nombre_cientifico,familia,reino,riesgo,ficha_tecnica,fecha").order("fecha", desc=True).execute()
+            registros = result.data
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     else:
         conn = get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute("SELECT id, nombre_plaga, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha FROM bitacora_plagas ORDER BY fecha DESC")
-            registros = cursor.fetchall()
+            registros = [dict(r) for r in cursor.fetchall()]
         finally:
             conn.close()
 
-    # Utilizamos la clase PDFReport que incluye encabezado y pie de página
     pdf = PDFReport()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    # Encabezado de tabla (el título ya lo agrega el header)
+    
     pdf.set_font("Helvetica", "B", 10)
     pdf.set_fill_color(220, 220, 220)
     headers = ["ID", "Plaga", "Científico", "Familia", "Riesgo", "Fecha"]
@@ -597,60 +608,47 @@ def generar_reporte_pdf():
     for i, h in enumerate(headers):
         pdf.cell(col_widths[i], 8, h, border=1, align="C", fill=True)
     pdf.ln()
-    # Cuerpo de tabla con filas alternas
+    
     pdf.set_font("Helvetica", size=9)
     fill = False
     pdf.set_fill_color(240, 240, 240)
+    
     if registros:
         for r in registros:
-            pdf.cell(col_widths[0], 6, str(r["id"]), border=1, fill=fill)
-            pdf.cell(col_widths[1], 6, str(r["nombre_plaga"]), border=1, fill=fill)
-            pdf.cell(col_widths[2], 6, str(r["nombre_cientifico"]), border=1, fill=fill)
-            pdf.cell(col_widths[3], 6, str(r["familia"]), border=1, fill=fill)
-            pdf.cell(col_widths[4], 6, str(r["riesgo"]), border=1, fill=fill)
-            pdf.cell(col_widths[5], 6, str(r["fecha"]), border=1, fill=fill)
+            pdf.cell(col_widths[0], 6, limpiar_texto(str(r.get("id", ""))), border=1, fill=fill)
+            pdf.cell(col_widths[1], 6, limpiar_texto(str(r.get("nombre_plaga", ""))), border=1, fill=fill)
+            pdf.cell(col_widths[2], 6, limpiar_texto(str(r.get("nombre_cientifico", ""))), border=1, fill=fill)
+            pdf.cell(col_widths[3], 6, limpiar_texto(str(r.get("familia", r.get("family", "")))), border=1, fill=fill)
+            pdf.cell(col_widths[4], 6, limpiar_texto(str(r.get("riesgo", ""))), border=1, fill=fill)
+            pdf.cell(col_widths[5], 6, limpiar_texto(str(r.get("fecha", ""))), border=1, fill=fill)
             pdf.ln()
             fill = not fill
     else:
         pdf.cell(0, 6, "No hay registros en la bitácora.", ln=1)
 
     pdf_output = pdf.output(dest='S')
-    pdf_bytes = pdf_output.encode('latin-1')
+    pdf_bytes = pdf_output.encode('latin-1', errors='replace')
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=AgroGuard_Reporte_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"}
     )
 
-# ─────────────────────────────────────────────
-# ENDPOINT /config (Obligatorio del PDF)
-# ─────────────────────────────────────────────
 @app.get("/config", tags=["Fase 1 - Configuración"])
 async def check_config():
     return {
-        "status": "Running in Staging",
+        "status": "Running in Cloud",
         "port": PORT,
         "host": HOST,
-        "db_path": DB_PATH,
         "gemini_key_loaded": bool(GEMINI_API_KEY),
-        "cors_origin": ORIGEN_PERMITIDO,
-        "version": "1.0.0 (Fase 1 completada)"
+        "supabase_connected": bool(supabase),
+        "version": "1.0.0 (Producción)"
     }
 
-# Debug endpoint – permite comprobar rápidamente que Supabase está activo y responde
-@app.get("/debug/supabase")
-def debug_supabase():
-    if supabase:
-        r = supabase.table("bitacora_plagas").select("id").limit(1).execute()
-        return {"error": r.error, "data": r.data}
-    return {"status": "supabase client not initialised"}
-
-# ─────────────────────────────────────────────
-# Health check
-# ─────────────────────────────────────────────
 @app.get("/", tags=["General"])
 def root():
-    return {"sistema": "AgroGuard", "estado": "activo", "version": "1.0.0 (Fase 1)"}
+    return {"sistema": "AgroGuard", "estado": "activo", "version": "1.0.0 (Desplegado en Render)"}
+
 @app.get("/healthz", tags=["General"])
 def healthz():
-    return {"status":"ok"}      
+    return {"status": "ok"}
