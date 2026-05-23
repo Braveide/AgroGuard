@@ -626,10 +626,11 @@ def generar_reporte_pdf():
     else:
         pdf.cell(0, 6, "No hay registros en la bitácora.", ln=1)
 
-    pdf_output = pdf.output(dest='S')
-    pdf_bytes = pdf_output.encode('latin-1', errors='replace')
+    #  fpdf2 genera los bytes directamente llamando al método limpio
+    pdf_bytes = pdf.output()
+    
     return Response(
-        content=pdf_bytes,
+        content=bytes(pdf_bytes),  # Aseguramos el formato binario correcto
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=AgroGuard_Reporte_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"}
     )
