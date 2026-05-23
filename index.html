@@ -312,7 +312,7 @@
           </p>
         </div>
       </div>
-      <a href="#" onclick="window.open(API + '/reporte_pdf', '_blank')" target="_blank"
+      <a href="#" onclick="window.location.href = API_BASE + '/reporte_pdf'" target="_blank"
         style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.25);color:var(--neon);padding:.55rem 1rem;border-radius:.5rem;font-size:.8rem;font-weight:600;text-decoration:none;white-space:nowrap;transition:all .2s;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;"
         onmouseover="this.style.background='rgba(168,255,62,.15)';this.style.boxShadow='0 0 16px rgba(168,255,62,.15)'"
         onmouseout="this.style.background='rgba(168,255,62,.08)';this.style.boxShadow='none'">
@@ -647,11 +647,11 @@
 <!-- ────────────────── SCRIPT ────────────────── -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const API ="https://tu-app-backend.onrender.com"
+const API = "https://agroguard-03nz.onrender.com";
 
 const API_KEY = "my-public-key";
-const API_BASE = API; // Alias para usar la base del API en todas las peticiones
-  let mapaLeaflet = null;
+let mapaLeaflet = null;
+const API_BASE = API;
 
   /* ─── Tabs ─── */
 function cambiarTab(tab) {
@@ -717,8 +717,7 @@ function cambiarTab(tab) {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'x-api-key': API_KEY,
-          'ngrok-skip-browser-warning': 'true'
+          'x-api-key': API_KEY
         },
         body: JSON.stringify({ nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha }),
       });
@@ -745,10 +744,9 @@ function cambiarTab(tab) {
 
     // Peticiones en paralelo
     const [localResult, gbifResult] = await Promise.allSettled([
-      fetch(`${API_BASE}/consultar/${encodeURIComponent(nombre)}`, { 
+      fetch(`${API_BASE}/buscar_local/${encodeURIComponent(nombre)}`, { 
         headers: { 
-          'x-api-key': API_KEY,
-          'ngrok-skip-browser-warning': 'true'
+          'x-api-key': API_KEY
         } 
       }).then(r => {
         if (!r.ok) return r.json().then(e => Promise.reject(e.detail || 'No encontrado'));
@@ -756,8 +754,7 @@ function cambiarTab(tab) {
       }),
       fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombre)}`, { 
         headers: { 
-          'x-api-key': API_KEY,
-          'ngrok-skip-browser-warning': 'true'
+          'x-api-key': API_KEY
         } 
       }).then(r => {
         if (!r.ok) return r.json().then(e => Promise.reject(e.detail || 'No encontrado'));
@@ -984,8 +981,7 @@ function cambiarTab(tab) {
     try {
       const res = await fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombreDetectado)}`, { 
         headers: { 
-          'x-api-key': API_KEY,
-          'ngrok-skip-browser-warning': 'true'
+          'x-api-key': API_KEY
         } 
       });
       if (!res.ok) {
@@ -1068,8 +1064,7 @@ function cambiarTab(tab) {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'x-api-key': API_KEY,
-          'ngrok-skip-browser-warning': 'true'
+          'x-api-key': API_KEY
         },
         body: JSON.stringify({
           nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha,
@@ -1519,25 +1514,57 @@ function aplicarFiltro(tipo) {
 
 
   function inicializarMapa(lat = 19.4326, lng = -99.1332) {
-    if (mapaLeaflet) { mapaLeaflet.remove(); mapaLeaflet = null; }
+    if (mapaLeaflet) { 
+        mapaLeaflet.remove(); 
+        mapaLeaflet = null; 
+    }
+    
     mapaLeaflet = L.map('mapa').setView([lat, lng], 5);
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors', maxZoom: 18,
+        attribution: '© OpenStreetMap contributors', 
+        maxZoom: 18,
     }).addTo(mapaLeaflet);
+    
     return mapaLeaflet;
-  }
+}
 
-  async function cargarMapa() {
+async function cargarMapa() {
     const status = document.getElementById('mapa-status');
     status.textContent = 'Cargando focos...';
-    const mapa = inicializarMapa();
+    
+    // Llamamos a la función directamente (ella ya configura la global 'mapaLeaflet')
+    inicializarMapa(); 
+    
     try {
-      const res = await fetch(`${API_BASE}/focos`, { 
-        headers: { 
-          'x-api-key': API_KEY,
-          'ngrok-skip-browser-warning': 'true'
-        } 
-      });
+        // Quitamos los headers para que la petición a Render sea directa y limpia
+        const res = await fetch(`${API_BASE}/focos`);
+        
+        if (!res.ok) throw new Error("Error en la respuesta del servidor");
+        
+        const focos = await res.json();
+        
+        // Limpiamos el texto de carga
+        status.textContent = ''; 
+        
+        // Dibujamos los marcadores usando la variable global correcta
+        focos.forEach(foco => {
+            if (foco.latitud && foco.longitud) {
+                L.marker([foco.latitud, foco.longitud])
+                    .addTo(mapaLeaflet)
+                    .bindPopup(`
+                        <b>${foco.nombre_plaga || 'Plaga'}</b><br>
+                        Riesgo: ${foco.riesgo || 'No definido'}<br>
+                        Finca: ${foco.finca || 'Local'}
+                    `);
+            }
+        });
+
+    } catch (error) {
+        console.error("Error al cargar los focos del mapa:", error);
+        status.textContent = 'Error al cargar los datos del mapa.';
+    }
+}
       if (!res.ok) { status.textContent = 'No hay registros con ubicación aún.'; return; }
       const focos = await res.json();
       if (!focos.length) { status.textContent = 'No hay focos con ubicación registrada aún.'; return; }
