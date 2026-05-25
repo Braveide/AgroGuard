@@ -939,84 +939,62 @@ function cambiarTab(tab) {
 
     const contenedor = document.getElementById('img-resultado');
 
-    // ── Paso 1: convertir imagen a base64 ──
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          const MAX = 800;
-          let w = img.width, h = img.height;
-          if (w > MAX || h > MAX) {
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else       { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
-        };
-        img.onerror = reject;
-        img.src = reader.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(archivoImagen);
-    });
-
     contenedor.innerHTML = `
       <div class="flex items-center gap-3 p-4 rounded-lg fade-up" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);">
         <div class="spinner"></div>
         <div>
           <p style="font-weight:600;color:var(--white);font-size:.9rem;">Analizando imagen con IA…</p>
-          <p class="mono" style="font-size:.72rem;color:var(--muted);">Claude Vision → iNaturalist → GBIF</p>
+          <p class="mono" style="font-size:.72rem;color:var(--muted);">Gemini Vision → iNaturalist → GBIF</p>
         </div>
       </div>`;
 
-    // ── Paso 2: Claude Vision ──
-    let nombreDetectado = '';
+    // ── Comprimir imagen antes de enviar ──
+    let blob;
     try {
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 500,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'base64', media_type: 'image/jpeg', data: base64 }
-              },
-              {
-                type: 'text',
-                text: 'Identify the insect, pest or plant species in this image. Reply ONLY with the most likely scientific name (genus and species). If uncertain, reply with just the genus or family name. No explanations, just the scientific name.'
-              }
-            ]
-          }]
-        })
+      blob = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const MAX = 800;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+              else       { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas vacío')), 'image/jpeg', 0.80);
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(archivoImagen);
       });
-      if (!claudeRes.ok) throw new Error('Error al contactar el servicio de IA.');
-      const claudeData = await claudeRes.json();
-      nombreDetectado = claudeData?.content?.[0]?.text?.trim();
-      if (!nombreDetectado) throw new Error('Claude no identificó la especie.');
     } catch (err) {
-      contenedor.innerHTML = errorBox(`No se pudo analizar la imagen: ${err.message}`);
+      contenedor.innerHTML = errorBox(`Error al procesar la imagen: ${err.message}`);
       return;
     }
 
-    // ── Paso 3: /buscar_externo que ya funciona perfecto ──
+    // ── Enviar al backend (Render) — evita el bloqueo CORS de las APIs externas ──
     try {
-      const res = await fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombreDetectado)}`, { 
-        headers: { 
-          'x-api-key': API_KEY
-        } 
+      const formData = new FormData();
+      formData.append('imagen', blob, 'plaga.jpg');
+
+      const res = await fetch(`${API_BASE}/identificar_imagen`, {
+        method: 'POST',
+        headers: { 'x-api-key': API_KEY },
+        body: formData,
       });
+
       if (!res.ok) {
-        const e = await res.json();
-        contenedor.innerHTML = errorBox(`Claude detectó "${sanitize(nombreDetectado)}" pero: ${e.detail}`);
+        const e = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        contenedor.innerHTML = errorBox(e.detail || 'El servidor no pudo identificar la plaga.');
         return;
       }
+
       const g = await res.json();
       contenedor.innerHTML = `
         <div class="card p-4 fade-up" style="border-left:3px solid var(--amber);">
@@ -1027,7 +1005,6 @@ function cambiarTab(tab) {
               onerror="this.parentElement.style.display='none'" />
           </div>` : ''}
           <p class="mono mb-2" style="font-size:.68rem;color:var(--amber);letter-spacing:.08em;">IDENTIFICACIÓN POR IMAGEN · IA</p>
-          <p class="mono mb-3" style="font-size:.7rem;color:var(--muted);">Claude detectó: <span style="color:var(--white);font-style:italic;">${sanitize(nombreDetectado)}</span></p>
           <dl style="font-size:.85rem;">
             <div class="res-row"><dt>Nombre científico</dt><dd style="font-style:italic;font-weight:600;color:var(--white);">${sanitize(g.nombre_cientifico)}</dd></div>
             <div class="res-row"><dt>Familia</dt><dd style="color:var(--text);">${sanitize(g.familia)}</dd></div>
@@ -1053,10 +1030,10 @@ function cambiarTab(tab) {
               </a></dd>
             </div>` : ''}
           </dl>
-          <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">Claude Vision + iNaturalist + GBIF</p>
+          <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">Gemini Vision + iNaturalist + GBIF</p>
         </div>`;
     } catch (err) {
-      contenedor.innerHTML = errorBox('No se pudo conectar con el servidor.');
+      contenedor.innerHTML = errorBox(`Error de conexión con el servidor: ${err.message}`);
     }
   }
 
@@ -1308,50 +1285,41 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
   async function procesarImagenCampo(event) {
     const file = event.target.files[0];
     if (!file) return;
-    archivoImagen = file;
     const resultado = document.getElementById('campo-resultado');
     const contenido = document.getElementById('campo-resultado-contenido');
     resultado.classList.remove('hidden');
     contenido.innerHTML = `<div style="display:flex;align-items:center;gap:.75rem;"><div class="spinner"></div><p style="font-family:'Manrope',sans-serif;font-size:1rem;color:var(--text);">Identificando plaga…</p></div>`;
 
-    const base64 = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          const MAX = 800;
-          let w = img.width, h = img.height;
-          if (w > MAX || h > MAX) {
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
-
     try {
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 50,
-          messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-            { type: 'text', text: 'Identify the insect or pest in this image. Reply ONLY with the scientific name.' }
-          ]}]
-        })
+      // Comprimir y enviar al backend (evita CORS de APIs externas)
+      const blob = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const MAX = 800;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+              else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas vacío')), 'image/jpeg', 0.80);
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
       });
-      if (!claudeRes.ok) throw new Error();
-      const claudeData = await claudeRes.json();
-      const nombre = claudeData?.content?.[0]?.text?.trim();
-      if (!nombre) throw new Error();
-      const res = await fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombre)}`, { headers: { 'x-api-key': API_KEY } });
+
+      const formData = new FormData();
+      formData.append('imagen', blob, 'plaga.jpg');
+      const res = await fetch(`${API_BASE}/identificar_imagen`, {
+        method: 'POST',
+        headers: { 'x-api-key': API_KEY },
+        body: formData,
+      });
       if (!res.ok) throw new Error('No encontrado');
       const g = await res.json();
       contenido.innerHTML = `
