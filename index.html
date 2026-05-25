@@ -283,6 +283,30 @@
       outline-offset: 2px !important;
       cursor: pointer !important;
     }
+
+    /* ── Responsive result rows (replaces fixed-width tables) ── */
+    .res-row {
+      display: flex;
+      gap: .5rem;
+      padding: .3rem 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      align-items: baseline;
+    }
+    .res-row:last-child { border-bottom: none; }
+    .res-row dt {
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 600;
+      min-width: 110px;
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .res-row dd { flex: 1; word-break: break-word; }
+    .res-row--stack { align-items: flex-start; }
+    @media (max-width: 400px) {
+      .res-row { flex-direction: column; gap: .1rem; }
+      .res-row dt { min-width: unset; }
+    }
   </style>
 </head>
 
@@ -312,13 +336,13 @@
 
       <!-- FILA 2: PDF + botones de accesibilidad -->
       <div style="display:flex;align-items:center;gap:.3rem;">
-        <a href="#" onclick="window.location.href = API_BASE + '/reporte_pdf'" target="_blank"
-          style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.25);color:var(--neon);padding:.42rem .6rem;border-radius:.4rem;font-size:.75rem;font-weight:600;text-decoration:none;font-family:'JetBrains Mono',monospace;"
+        <button type="button" onclick="globalThis.location.href = API_BASE + '/reporte_pdf'"
+          style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.25);color:var(--neon);padding:.42rem .6rem;border-radius:.4rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;"
           onmouseover="this.style.background='rgba(168,255,62,.15)'"
           onmouseout="this.style.background='rgba(168,255,62,.08)'">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
           <span data-i18n="btn_pdf">REPORTE PDF</span>
-        </a>
+        </button>
         <select id="selector-idioma" onchange="cambiarIdioma(this.value)"
           style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.38rem .3rem;border-radius:.4rem;cursor:pointer;font-size:.7rem;font-family:'JetBrains Mono',monospace;outline:none;width:58px;height:32px;">
           <option value="es">🇲🇽 ES</option>
@@ -512,7 +536,11 @@
           <span data-i18n="desc_imagen">Sube una foto de la plaga y el sistema la identificará automáticamente usando inteligencia artificial.</span>
         </p>
         <div id="drop-zone"
+          role="button"
+          tabindex="0"
+          aria-label="Zona para subir imagen de plaga — haz clic o arrastra un archivo"
           onclick="document.getElementById('inp-imagen').click()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('inp-imagen').click();}"
           style="border:2px dashed rgba(168,255,62,.2);border-radius:.75rem;padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;"
           onmouseover="this.style.borderColor='var(--leaf)';this.style.background='rgba(93,138,58,.04)'"
           onmouseout="this.style.borderColor='rgba(93,138,58,.4)';this.style.background='transparent'"
@@ -547,23 +575,23 @@
         </p>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div class="flex flex-col gap-1">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_nombre">NOMBRE *</label>
+            <label for="f-nombre" class="mono text-xs" style="color:var(--neon);" data-i18n="label_nombre">NOMBRE *</label>
             <input id="f-nombre" type="text" data-i18n="placeholder_buscar" placeholder="Ej: mosca blanca" class="h-11" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_ncientifico">NOMBRE CIENTÍFICO *</label>
+            <label for="f-nombre-cientifico" class="mono text-xs" style="color:var(--neon);" data-i18n="label_ncientifico">NOMBRE CIENTÍFICO *</label>
             <input id="f-nombre-cientifico" type="text" data-i18n="placeholder_ncientifico" placeholder="Ej: Bemisia tabaci" class="h-11" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_familia">FAMILIA *</label>
+            <label for="f-familia" class="mono text-xs" style="color:var(--neon);" data-i18n="label_familia">FAMILIA *</label>
             <input id="f-familia" type="text" data-i18n="placeholder_familia"    placeholder="Ej: Aleyrodidae" class="h-11" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_reino">REINO *</label>
+            <label for="f-reino" class="mono text-xs" style="color:var(--neon);" data-i18n="label_reino">REINO *</label>
             <input id="f-reino" type="text" data-i18n="placeholder_reino"      placeholder="Ej: Animalia" class="h-11" />
           </div>
           <div class="flex flex-col gap-1">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_riesgo">RIESGO *</label>
+            <label for="f-riesgo" class="mono text-xs" style="color:var(--neon);" data-i18n="label_riesgo">RIESGO *</label>
             <select id="f-riesgo" class="h-11">
               <option value="" data-i18n="opt_seleccionar">— Seleccionar —</option>
               <option value="Alto" data-i18n="opt_alto">🔴 Alto</option>
@@ -572,15 +600,15 @@
             </select>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_fecha">FECHA *</label>
+            <label for="f-fecha" class="mono text-xs" style="color:var(--neon);" data-i18n="label_fecha">FECHA *</label>
             <input id="f-fecha" type="date" class="h-11" />
           </div>
           <div class="flex flex-col gap-1 sm:col-span-2">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_ficha">FICHA TÉCNICA *</label>
+            <label for="f-ficha" class="mono text-xs" style="color:var(--neon);" data-i18n="label_ficha">FICHA TÉCNICA *</label>
             <textarea id="f-ficha" rows="3" data-i18n="placeholder_ficha" placeholder="Describe características, síntomas, ciclo de vida, tratamiento recomendado…" style="resize:vertical;"></textarea>
           </div>
           <div class="flex flex-col gap-1 sm:col-span-2">
-            <label class="mono text-xs" style="color:var(--neon);" data-i18n="label_ubicacion">UBICACIÓN DEL FOCO</label>
+            <label for="f-latitud" class="mono text-xs" style="color:var(--neon);" data-i18n="label_ubicacion">UBICACIÓN DEL FOCO</label>
             <div class="flex gap-2 items-center">
               <input id="f-latitud" type="text" data-i18n="placeholder_lat" placeholder="Latitud" readonly style="background:rgba(93,138,58,.06);cursor:default;" class="h-11" />
               <input id="f-longitud" type="text" data-i18n="placeholder_lng" placeholder="Longitud" readonly style="background:rgba(93,138,58,.06);cursor:default;" class="h-11" />
@@ -641,13 +669,13 @@
 // ResizeObserver: reajusta Leaflet si el wrapper cambia de tamaño (rotación, resize)
 window.addEventListener('DOMContentLoaded', () => {
   const wrapper = document.getElementById('mapa-wrapper');
-  if (wrapper && window.ResizeObserver) {
+  if (wrapper && globalThis.ResizeObserver) {
     new ResizeObserver(() => {
       const mapaDiv = document.getElementById('mapa');
       if (mapaDiv && wrapper.offsetHeight > 0) {
         mapaDiv.style.height = wrapper.offsetHeight + 'px';
       }
-      if (window.mapaLeaflet) window.mapaLeaflet.invalidateSize();
+      if (globalThis.mapaLeaflet) globalThis.mapaLeaflet.invalidateSize();
     }).observe(wrapper);
   }
 });
@@ -656,7 +684,7 @@ window.addEventListener('DOMContentLoaded', () => {
 const API = "https://agroguard-03nz.onrender.com";
 
 const API_KEY = "my-public-key";
-window.mapaLeaflet = null;
+globalThis.mapaLeaflet = null;
 let mapaLeaflet = null;
 const API_BASE = API;
 
@@ -690,13 +718,13 @@ function cambiarTab(tab) {
   function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
     t.textContent = msg;
-    t.className = `show `;
+    t.className = `show ${type}`;
     setTimeout(() => { t.className = ''; }, 3200);
   }
 
   function badgeRiesgo(riesgo) {
     const map = { Alto: 'badge-alto', Medio: 'badge-medio', Bajo: 'badge-bajo' };
-    return `<span class="badge ${map[riesgo] || ''}"></span>`;
+    return `<span class="badge ${map[riesgo] || ''}">${riesgo || '—'}</span>`;
   }
 
   function spinner() {
@@ -707,8 +735,19 @@ function cambiarTab(tab) {
     return `
       <div class="rounded-lg p-3 text-sm fade-up" style="background:rgba(255,71,87,.08);color:var(--red);border:1px solid rgba(255,71,87,.3);">
         <span style="font-weight:600;">⚠️ Sin datos</span><br/>
-        <span style="opacity:.85;"></span>
+        <span style="opacity:.85;">${msg || ''}</span>
       </div>`;
+  }
+
+  /* ─── Sanitize XSS ─── */
+  function sanitize(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /* ─── Registrar plaga ─── */
@@ -726,20 +765,27 @@ function cambiarTab(tab) {
     }
 
     try {
+      const latVal = document.getElementById('f-latitud').value;
+      const lngVal = document.getElementById('f-longitud').value;
       const res = await fetch(`${API_BASE}/registrar`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
           'x-api-key': API_KEY
         },
-        body: JSON.stringify({ nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha }),
+        body: JSON.stringify({
+          nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha,
+          latitud:  latVal  ? Number.parseFloat(latVal)  : null,
+          longitud: lngVal  ? Number.parseFloat(lngVal)  : null,
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).detail || 'Error desconocido');
       const data = await res.json();
       showToast(`✅ Plaga #${data.id} registrada correctamente.`, 'success');
-      // Limpiar form
-      ['f-nombre','f-nombre-cientifico','f-familia','f-reino','f-ficha','f-fecha'].forEach(id => document.getElementById(id).value = '');
+      ['f-nombre','f-nombre-cientifico','f-familia','f-reino','f-ficha'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('f-riesgo').value = '';
+      document.getElementById('f-fecha').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('geo-status').textContent = '';
     } catch (err) {
       showToast(`❌ ${err.message}`, 'error');
     }
@@ -758,19 +804,15 @@ function cambiarTab(tab) {
     // Peticiones en paralelo
     const [localResult, gbifResult] = await Promise.allSettled([
       fetch(`${API_BASE}/buscar_local/${encodeURIComponent(nombre)}`, { 
-        headers: { 
-          'x-api-key': API_KEY
-        } 
-      }).then(r => {
-        if (!r.ok) return r.json().then(e => Promise.reject(e.detail || 'No encontrado'));
+        headers: { 'x-api-key': API_KEY } 
+      }).then(async r => {
+        if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'No encontrado'); }
         return r.json();
       }),
       fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombre)}`, { 
-        headers: { 
-          'x-api-key': API_KEY
-        } 
-      }).then(r => {
-        if (!r.ok) return r.json().then(e => Promise.reject(e.detail || 'No encontrado'));
+        headers: { 'x-api-key': API_KEY } 
+      }).then(async r => {
+        if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'No encontrado'); }
         return r.json();
       }),
     ]);
@@ -782,37 +824,19 @@ function cambiarTab(tab) {
       document.getElementById('local-content').innerHTML = registros.map(r => `
         <div class="card p-4 fade-up" style="border-left:3px solid var(--cyan);background:rgba(5,20,28,.8);">
           <p class="mono text-xs mb-2" style="color:var(--cyan);">REGISTRO LOCAL</p>
-          <div class="overflow-x-auto"><table class="w-full min-w-[800px] text-sm" style="border-collapse:collapse;">
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre</td>
-              <td style="font-weight:600;color:var(--text);">${sanitize(r.nombre_plaga)}</td>
-            </tr>
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
-              <td style="font-style:italic;font-weight:600;color:var(--text);">${sanitize(r.nombre_cientifico)}</td>
-            </tr>
-            <tr>
-                <td class="py-1 pr-3 hidden sm:table-cell" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
-                <td class="hidden sm:table-cell" style="color:var(--text);">${sanitize(r.familia)}</td>
-            </tr>
-            <tr>
-                <td class="py-1 pr-3 hidden sm:table-cell" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
-                <td class="hidden sm:table-cell" style="color:var(--text);">${sanitize(r.reino)}</td>
-            </tr>
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Riesgo</td>
-              <td>${badgeRiesgo(r.riesgo)}</td>
-            </tr>
-            <tr>
-                <td class="py-1 pr-3 hidden sm:table-cell" style="color:var(--muted);font-size:.78rem;font-weight:600;vertical-align:top;">Ficha técnica</td>
-                <td class="hidden sm:table-cell" style="color:var(--text);">${sanitize(r.ficha_tecnica)}</td>
-            </tr>
-          </table>
-           </div><p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: BD local · #${sanitize(r.id)} · ${sanitize(r.fecha)}</p>
+          <dl style="font-size:.85rem;">
+            <div class="res-row"><dt>Nombre</dt><dd style="font-weight:600;color:var(--text);">${sanitize(r.nombre_plaga)}</dd></div>
+            <div class="res-row"><dt>Nombre científico</dt><dd style="font-style:italic;font-weight:600;color:var(--text);">${sanitize(r.nombre_cientifico)}</dd></div>
+            <div class="res-row"><dt>Familia</dt><dd style="color:var(--text);">${sanitize(r.familia)}</dd></div>
+            <div class="res-row"><dt>Reino</dt><dd style="color:var(--text);">${sanitize(r.reino)}</dd></div>
+            <div class="res-row"><dt>Riesgo</dt><dd>${badgeRiesgo(r.riesgo)}</dd></div>
+            <div class="res-row res-row--stack"><dt>Ficha técnica</dt><dd style="color:var(--text);">${sanitize(r.ficha_tecnica)}</dd></div>
+          </dl>
+          <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: BD local · #${sanitize(r.id)} · ${sanitize(r.fecha)}</p>
         </div>`).join('');
     } else {
       document.getElementById('local-content').innerHTML =
-        errorBox(localResult.reason || 'Sin registros locales.');
+        errorBox(localResult.reason?.message || 'Sin registros locales.');
     }
 
     /* ── Render GBIF ── */
@@ -827,47 +851,36 @@ function cambiarTab(tab) {
               onerror="this.parentElement.style.display='none'" />
           </div>` : ''}
           <p class="mono text-xs mb-2" style="color:var(--neon);">CLASIFICACIÓN TAXONÓMICA</p>
-          <table class="w-full text-sm" style="border-collapse:collapse;">
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
-              <td style="font-style:italic;font-weight:600;color:var(--text);">${sanitize(g.nombre_cientifico)}</td>
-            </tr>
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
-              <td style="color:var(--text);">${sanitize(g.familia)}</td>
-            </tr>
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
-              <td style="color:var(--text);">${sanitize(g.reino)}</td>
-            </tr>
+          <dl style="font-size:.85rem;">
+            <div class="res-row"><dt>Nombre científico</dt><dd style="font-style:italic;font-weight:600;color:var(--text);">${sanitize(g.nombre_cientifico)}</dd></div>
+            <div class="res-row"><dt>Familia</dt><dd style="color:var(--text);">${sanitize(g.familia)}</dd></div>
+            <div class="res-row"><dt>Reino</dt><dd style="color:var(--text);">${sanitize(g.reino)}</dd></div>
             ${g.confianza != null ? `
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Confianza</td>
-              <td>
+            <div class="res-row" style="align-items:center;">
+              <dt>Confianza</dt>
+              <dd>
                 <div style="display:flex;align-items:center;gap:.5rem;">
-                  <div style="flex:1;height:6px;background:#ddd;border-radius:999px;">
+                  <div style="flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:999px;min-width:60px;">
                     <div style="width:${sanitize(g.confianza)}%;height:100%;background:var(--neon);border-radius:999px;"></div>
                   </div>
-                  <span class="mono" style="font-size:.75rem;">${sanitize(g.confianza)}%</span>
+                  <span class="mono" style="font-size:.75rem;white-space:nowrap;">${sanitize(g.confianza)}%</span>
                 </div>
-              </td>
-            </tr>` : ''}
+              </dd>
+            </div>` : ''}
             ${g.wikipedia_url ? `
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Wikipedia</td>
-              <td>
-                <a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener"
-                  style="color:var(--cyan);font-size:.82rem;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;">
-                  🔗 Ver artículo completo
-                </a>
-              </td>
-            </tr>` : ''}
-          </table>
+            <div class="res-row">
+              <dt>Wikipedia</dt>
+              <dd><a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener"
+                style="color:var(--cyan);font-size:.82rem;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;">
+                🔗 Ver artículo completo
+              </a></dd>
+            </div>` : ''}
+          </dl>
           <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: GBIF.org + iNaturalist</p>
         </div>`;
     } else {
       document.getElementById('gbif-content').innerHTML =
-        errorBox(gbifResult.reason || 'GBIF no devolvió resultados.');
+        errorBox(gbifResult.reason?.message || 'GBIF no devolvió resultados.');
     }
   }
 
@@ -1015,83 +1028,35 @@ function cambiarTab(tab) {
           </div>` : ''}
           <p class="mono mb-2" style="font-size:.68rem;color:var(--amber);letter-spacing:.08em;">IDENTIFICACIÓN POR IMAGEN · IA</p>
           <p class="mono mb-3" style="font-size:.7rem;color:var(--muted);">Claude detectó: <span style="color:var(--white);font-style:italic;">${sanitize(nombreDetectado)}</span></p>
-          <table class="w-full text-sm" style="border-collapse:collapse;">
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
-              <td style="font-style:italic;font-weight:600;color:var(--white);">${sanitize(g.nombre_cientifico)}</td>
-            </tr>
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
-              <td style="color:var(--text);">${sanitize(g.familia)}</td>
-            </tr>
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
-              <td style="color:var(--text);">${sanitize(g.reino)}</td>
-            </tr>
+          <dl style="font-size:.85rem;">
+            <div class="res-row"><dt>Nombre científico</dt><dd style="font-style:italic;font-weight:600;color:var(--white);">${sanitize(g.nombre_cientifico)}</dd></div>
+            <div class="res-row"><dt>Familia</dt><dd style="color:var(--text);">${sanitize(g.familia)}</dd></div>
+            <div class="res-row"><dt>Reino</dt><dd style="color:var(--text);">${sanitize(g.reino)}</dd></div>
             ${g.confianza != null ? `
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Confianza</td>
-              <td>
+            <div class="res-row" style="align-items:center;">
+              <dt>Confianza</dt>
+              <dd>
                 <div style="display:flex;align-items:center;gap:.5rem;">
-                  <div style="flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:999px;">
+                  <div style="flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:999px;min-width:60px;">
                     <div style="width:${sanitize(g.confianza)}%;height:100%;background:var(--neon);border-radius:999px;"></div>
                   </div>
-                  <span class="mono" style="font-size:.75rem;color:var(--neon);">${sanitize(g.confianza)}%</span>
+                  <span class="mono" style="font-size:.75rem;color:var(--neon);white-space:nowrap;">${sanitize(g.confianza)}%</span>
                 </div>
-              </td>
-            </tr>` : ''}
+              </dd>
+            </div>` : ''}
             ${g.wikipedia_url ? `
-            <tr>
-              <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Wikipedia</td>
-              <td>
-                <a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener"
-                  style="color:var(--cyan);font-size:.82rem;text-decoration:none;">
-                  🔗 Ver artículo completo
-                </a>
-              </td>
-            </tr>` : ''}
-          </table>
+            <div class="res-row">
+              <dt>Wikipedia</dt>
+              <dd><a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener"
+                style="color:var(--cyan);font-size:.82rem;text-decoration:none;">
+                🔗 Ver artículo completo
+              </a></dd>
+            </div>` : ''}
+          </dl>
           <p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">Claude Vision + iNaturalist + GBIF</p>
         </div>`;
     } catch (err) {
       contenedor.innerHTML = errorBox('No se pudo conectar con el servidor.');
-    }
-  }
-
-  /* ─── Registrar plaga ─── */
-  async function registrarPlaga() {
-    const nombre            = document.getElementById('f-nombre').value.trim();
-    const nombre_cientifico = document.getElementById('f-nombre-cientifico').value.trim();
-    const familia           = document.getElementById('f-familia').value.trim();
-    const reino             = document.getElementById('f-reino').value.trim();
-    const riesgo            = document.getElementById('f-riesgo').value;
-    const ficha_tecnica     = document.getElementById('f-ficha').value.trim();
-    const fecha             = document.getElementById('f-fecha').value;
-
-    if (!nombre || !nombre_cientifico || !familia || !reino || !riesgo || !ficha_tecnica || !fecha) {
-      showToast('Completa todos los campos antes de guardar.', 'error'); return;
-    }
-
-    try {
-      const latVal = document.getElementById('f-latitud').value;
-      const lngVal = document.getElementById('f-longitud').value;
-      const res = await fetch(`${API_BASE}/registrar`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'x-api-key': API_KEY
-        },
-        body: JSON.stringify({
-          nombre_plaga: nombre, nombre_cientifico, familia, reino, riesgo, ficha_tecnica, fecha,
-          latitud:  latVal  ? parseFloat(latVal)  : null,
-          longitud: lngVal  ? parseFloat(lngVal)  : null,
-        }),
-      });
-      document.getElementById('f-riesgo').value = '';
-      document.getElementById('f-fecha').value = new Date().toISOString().slice(0, 10);
-      document.getElementById('geo-status').textContent = '';
-    } catch (err) {
-      showToast(`❌ ${err.message}`, 'error');
     }
   }
 
@@ -1291,7 +1256,7 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
 
   // Todos los elementos con data-i18n
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
+    const key = el.dataset.i18n;
     if (!t[key]) return;
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       el.placeholder = t[key];
@@ -1304,8 +1269,8 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
 
   // Idioma del lector de voz
   const langVoz = { es: 'es-MX', en: 'en-US', pt: 'pt-BR' };
-  window._vozLang = langVoz[lang];
-  if (lectorActivo) speechSynthesis.cancel();
+  globalThis._vozLang = langVoz[lang];
+  if (lectorActivo) { speechSynthesis.cancel(); }
 
   showToast(`🌐 ${lang === 'es' ? 'Español' : lang === 'en' ? 'English' : 'Português'}`, 'success');
 }
@@ -1400,16 +1365,16 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
   }
 
   function iniciarRegistroVoz() {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!('webkitSpeechRecognition' in globalThis) && !('SpeechRecognition' in globalThis)) {
       showToast('Tu navegador no soporta reconocimiento de voz.', 'error'); return;
     }
     const voiceStateEl = document.getElementById('campo-voz-estado');
     if (voiceStateEl) {
       voiceStateEl.classList.remove('hidden');
     }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
     reconocimientoVoz = new SR();
-    reconocimientoVoz.lang = window._vozLang || 'es-MX';
+    reconocimientoVoz.lang = globalThis._vozLang || 'es-MX';
     reconocimientoVoz.interimResults = true;
     reconocimientoVoz.onresult = (e) => {
       const t = e.results[0][0].transcript;
@@ -1527,7 +1492,7 @@ function aplicarFiltro(tipo) {
     if (!texto || texto.length < 2) return;
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(texto);
-    utterance.lang = window._vozLang || 'es-MX';
+    utterance.lang = globalThis._vozLang || 'es-MX';
     utterance.rate = 0.95;
     utterance.pitch = 1;
     speechSynthesis.speak(utterance);
@@ -1560,7 +1525,7 @@ function aplicarFiltro(tipo) {
       mapaDiv.style.height = wrapper.offsetHeight + 'px';
     }
     mapaLeaflet = L.map('mapa', { zoomControl: true }).setView([lat, lng], 5);
-    window.mapaLeaflet = mapaLeaflet;
+    globalThis.mapaLeaflet = mapaLeaflet;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors', maxZoom: 18,
     }).addTo(mapaLeaflet);

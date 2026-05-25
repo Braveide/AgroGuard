@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Depends
+from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -144,40 +145,51 @@ class RespuestaGBIF(BaseModel):
     nombre_cientifico: str
     familia: str
     reino: str
-    ctnfianza: int | None = None  # Se mapeará con data.get("confidence")
+    confianza: int | None = None  # mapped from data.get("confidence")
     foto_url: str | None = None
     wikipedia_url: str | None = None
 
 # ─────────────────────────────────────────────
 # Helpers y Seguridad
 # ─────────────────────────────────────────────
-def extraer_texto_gemini(gemini_data: dict) -> str:
+def _partes_from_candidates(gemini_data: dict) -> list:
+    """Extrae la lista de partes desde candidates."""
     try:
-        partes = gemini_data["contents"][0]["parts"] if "contents" in gemini_data else gemini_data["candidates"][0]["content"]["parts"]
-        for parte in partes:
-            if parte.get("text") and not parte.get("thought", False):
-                texto = parte["text"].strip()
-                if texto: return texto
+        return gemini_data["candidates"][0]["content"]["parts"]
     except (KeyError, IndexError, TypeError):
-        pass
-    try:
-        partes = gemini_data["candidates"][0]["content"]["parts"]
-        for parte in partes:
-            if parte.get("text"):
-                texto = parte["text"].strip()
-                if texto: return texto
-    except (KeyError, IndexError, TypeError):
-        pass
+        return []
+
+def _primer_texto(partes: list, skip_thought: bool = False) -> str:
+    """Devuelve el primer texto no vacío de una lista de partes."""
+    for parte in partes:
+        if skip_thought and parte.get("thought", False):
+            continue
+        texto = parte.get("text", "").strip()
+        if texto:
+            return texto
     return ""
 
-def verify_api_key(x_api_key: str = Header(...)):
+def extraer_texto_gemini(gemini_data: dict) -> str:
+    # Intento 1: desde contents (respuesta directa)
+    try:
+        partes = gemini_data["contents"][0]["parts"]
+        texto = _primer_texto(partes, skip_thought=True)
+        if texto:
+            return texto
+    except (KeyError, IndexError, TypeError):
+        pass
+    # Intento 2: desde candidates
+    partes = _partes_from_candidates(gemini_data)
+    return _primer_texto(partes)
+
+def verify_api_key(x_api_key: Annotated[str, Header()]):
     if not API_SECRET_KEY:
         raise HTTPException(status_code=500, detail="API secret not configured")
     if x_api_key != API_SECRET_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
 
-def verify_public_key(x_api_key: str = Header(...)):
+def verify_public_key(x_api_key: Annotated[str, Header()]):
     if not API_PUBLIC_KEY:
         raise HTTPException(status_code=500, detail="API public key not configured")
     if x_api_key != API_PUBLIC_KEY:
@@ -228,7 +240,12 @@ def limpiar_texto(texto: str) -> str:
     response_model=RespuestaPlaga,
     summary="Registra una nueva plaga en la bitácora",
     tags=["Fase 3 – Persistencia"],
-    dependencies=[Depends(verify_public_key)]
+    dependencies=[Depends(verify_public_key)],
+    responses={
+        400: {"description": "Error en base de datos externa"},
+        401: {"description": "API key inválida"},
+        500: {"description": "Error interno del servidor"},
+    }
 )
 async def registrar_plaga(plaga: RegistroPlaga):
     payload = {
@@ -297,6 +314,10 @@ async def registrar_plaga(plaga: RegistroPlaga):
     "/buscar_externo/{nombre}",
     summary="Consulta ficha científica (iNaturalist → GBIF)",
     tags=["Fase 2 – API Externa"],
+    responses={
+        404: {"description": "Especie no encontrada en GBIF"},
+        503: {"description": "No se pudo contactar GBIF"},
+    }
 )
 async def buscar_externo(nombre: str):
     async with httpx.AsyncClient(timeout=12.0) as client:
@@ -331,7 +352,8 @@ async def buscar_externo(nombre: str):
         "wikipedia_url": inaturalist["wikipedia_url"],
     }
 
-@app.get("/focos", response_model=list[RespuestaPlaga], summary="Devuelve todos los registros con coordenadas para el mapa", tags=["Geolocalización"])
+@app.get("/focos", response_model=list[RespuestaPlaga], summary="Devuelve todos los registros con coordenadas para el mapa", tags=["Geolocalización"],
+         responses={500: {"description": "Error interno del servidor"}})
 async def obtener_focos():
     rows = []
     if supabase:
@@ -363,7 +385,8 @@ async def obtener_focos():
 
     return [RespuestaPlaga(**r) for r in rows]
 
-@app.get("/buscar_local/{nombre}", response_model=list[RespuestaPlaga], summary="Consulta registros locales por nombre de plaga", tags=["Fase 3 – Persistencia"])
+@app.get("/buscar_local/{nombre}", response_model=list[RespuestaPlaga], summary="Consulta registros locales por nombre de plaga", tags=["Fase 3 – Persistencia"],
+         responses={500: {"description": "Error interno del servidor"}})
 async def consultar_plaga(nombre: str):
     rows = []
     if supabase:
@@ -506,6 +529,11 @@ async def eliminar_plaga(id: int):
     summary="Identifica una plaga desde una imagen usando Gemini Vision",
     tags=["Fase 2B – Imagen"],
     dependencies=[Depends(verify_api_key)],
+    responses={
+        404: {"description": "Especie no encontrada en GBIF"},
+        422: {"description": "Gemini no pudo identificar la especie"},
+        500: {"description": "Error interno del servidor"},
+    }
 )
 async def identificar_imagen(imagen: UploadFile = File(...)):
     contenido = await imagen.read()
