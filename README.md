@@ -47,7 +47,7 @@ Si no se proporcionan `SUPABASE_URL` y `SUPABASE_KEY`, la aplicación usará SQL
 
 ## Ejecutar
     uvicorn backend.main:app --reload
-Visitar http://localhost:8000 en el navegador.
+Visitar https://agroguard-gules.vercel.app/ en el navegador.
 
 ## Uso del frontend
 - **Cambiar pestaña**: `cambiarTab('consultar'|'imagen'|'registrar'|'mapa')`
