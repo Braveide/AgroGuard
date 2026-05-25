@@ -294,50 +294,44 @@
 
   <!-- ────────────────── HEADER ────────────────── -->
   <header class="header-bar" style="padding:.85rem 1.1rem;">
-    <div class="max-w-4xl mx-auto" style="display:flex;flex-direction:column;gap:.6rem;">
+    <div class="max-w-4xl mx-auto" style="display:flex;flex-direction:column;gap:.55rem;">
 
-      <!-- FILA 1: Logo izquierda | Botones derecha -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
-
-        <!-- Logo -->
-        <div style="display:flex;align-items:center;gap:.55rem;flex:1;min-width:0;">
-          <div style="flex-shrink:0;width:34px;height:34px;background:rgba(168,255,62,.1);border:1px solid rgba(168,255,62,.25);border-radius:.45rem;display:flex;align-items:center;justify-content:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C8 2 4 5 4 10c0 3 1.5 5.5 4 7l1 5h6l1-5c2.5-1.5 4-4 4-7 0-5-4-8-8-8z" stroke="#a8ff3e" stroke-width="1.5" fill="none"/>
-              <path d="M12 6v8M9 9l3-3 3 3" stroke="#a8ff3e" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div style="min-width:0;overflow:hidden;">
-            <h1 style="font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;color:var(--neon);letter-spacing:-.02em;line-height:1;">AGROGUARD</h1>
-            <p style="font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:.6rem;margin-top:.1rem;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">GESTIÓN DE PLAGAS · v1.0</p>
-          </div>
+      <!-- FILA 1: Solo logo + título completo -->
+      <div style="display:flex;align-items:center;gap:.55rem;">
+        <div style="flex-shrink:0;width:34px;height:34px;background:rgba(168,255,62,.1);border:1px solid rgba(168,255,62,.25);border-radius:.45rem;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C8 2 4 5 4 10c0 3 1.5 5.5 4 7l1 5h6l1-5c2.5-1.5 4-4 4-7 0-5-4-8-8-8z" stroke="#a8ff3e" stroke-width="1.5" fill="none"/>
+            <path d="M12 6v8M9 9l3-3 3 3" stroke="#a8ff3e" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
         </div>
-
-        <!-- Botones compactos -->
-        <div style="display:flex;align-items:center;gap:.25rem;flex-shrink:0;">
-          <select id="selector-idioma" onchange="cambiarIdioma(this.value)"
-            style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.35rem .3rem;border-radius:.4rem;cursor:pointer;font-size:.7rem;font-family:'JetBrains Mono',monospace;outline:none;width:60px;">
-            <option value="es">🇲🇽 ES</option>
-            <option value="en">🇺🇸 EN</option>
-            <option value="pt">🇧🇷 PT</option>
-          </select>
-          <button onclick="toggleModoCampo()" id="btn-campo" title="Modo Campo"
-            style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);width:34px;height:34px;border-radius:.4rem;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;">🌾</button>
-          <button onclick="toggleDaltonismo()" id="btn-daltonismo" title="Modo daltonismo"
-            style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);width:34px;height:34px;border-radius:.4rem;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;">👁</button>
-          <button onclick="toggleLectorVoz()" id="btn-voz" title="Lector de voz"
-            style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);width:34px;height:34px;border-radius:.4rem;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;">🔊</button>
+        <div>
+          <h1 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--neon);letter-spacing:-.02em;line-height:1;">AGROGUARD</h1>
+          <p style="font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:.6rem;margin-top:.1rem;letter-spacing:.06em;">GESTIÓN DE PLAGAS · v1.0</p>
         </div>
       </div>
 
-      <!-- FILA 2: Botón PDF ancho completo -->
-      <a href="#" onclick="window.location.href = API_BASE + '/reporte_pdf'" target="_blank"
-        style="display:flex;align-items:center;justify-content:center;gap:.5rem;background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.25);color:var(--neon);padding:.45rem 1rem;border-radius:.45rem;font-size:.78rem;font-weight:600;text-decoration:none;transition:all .2s;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;"
-        onmouseover="this.style.background='rgba(168,255,62,.15)'"
-        onmouseout="this.style.background='rgba(168,255,62,.08)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        <span data-i18n="btn_pdf">REPORTE PDF</span>
-      </a>
+      <!-- FILA 2: PDF + botones de accesibilidad -->
+      <div style="display:flex;align-items:center;gap:.3rem;">
+        <a href="#" onclick="window.location.href = API_BASE + '/reporte_pdf'" target="_blank"
+          style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.25);color:var(--neon);padding:.42rem .6rem;border-radius:.4rem;font-size:.75rem;font-weight:600;text-decoration:none;font-family:'JetBrains Mono',monospace;"
+          onmouseover="this.style.background='rgba(168,255,62,.15)'"
+          onmouseout="this.style.background='rgba(168,255,62,.08)'">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <span data-i18n="btn_pdf">REPORTE PDF</span>
+        </a>
+        <select id="selector-idioma" onchange="cambiarIdioma(this.value)"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);padding:.38rem .3rem;border-radius:.4rem;cursor:pointer;font-size:.7rem;font-family:'JetBrains Mono',monospace;outline:none;width:58px;height:32px;">
+          <option value="es">🇲🇽 ES</option>
+          <option value="en">🇺🇸 EN</option>
+          <option value="pt">🇧🇷 PT</option>
+        </select>
+        <button onclick="toggleModoCampo()" id="btn-campo" title="Modo Campo"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);width:32px;height:32px;border-radius:.4rem;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">🌾</button>
+        <button onclick="toggleDaltonismo()" id="btn-daltonismo" title="Modo daltonismo"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);width:32px;height:32px;border-radius:.4rem;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">👁</button>
+        <button onclick="toggleLectorVoz()" id="btn-voz" title="Lector de voz"
+          style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--text);width:32px;height:32px;border-radius:.4rem;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">🔊</button>
+      </div>
 
     </div>
   </header>
@@ -784,25 +778,26 @@ function cambiarTab(tab) {
     /* ── Render local ── */
     if (localResult.status === 'fulfilled') {
       const registros = localResult.value;
+      if (!Array.isArray(registros)) { document.getElementById('local-content').innerHTML = errorBox('Respuesta inesperada del servidor.'); return; }
       document.getElementById('local-content').innerHTML = registros.map(r => `
         <div class="card p-4 fade-up" style="border-left:3px solid var(--cyan);background:rgba(5,20,28,.8);">
           <p class="mono text-xs mb-2" style="color:var(--cyan);">REGISTRO LOCAL</p>
           <div class="overflow-x-auto"><table class="w-full min-w-[800px] text-sm" style="border-collapse:collapse;">
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre</td>
-              <td style="font-weight:600;color:var(--text);">${r.nombre_plaga}</td>
+              <td style="font-weight:600;color:var(--text);">${sanitize(r.nombre_plaga)}</td>
             </tr>
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
-              <td style="font-style:italic;font-weight:600;color:var(--text);">${r.nombre_cientifico}</td>
+              <td style="font-style:italic;font-weight:600;color:var(--text);">${sanitize(r.nombre_cientifico)}</td>
             </tr>
             <tr>
                 <td class="py-1 pr-3 hidden sm:table-cell" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
-                <td class="hidden sm:table-cell" style="color:var(--text);">${r.familia}</td>
+                <td class="hidden sm:table-cell" style="color:var(--text);">${sanitize(r.familia)}</td>
             </tr>
             <tr>
                 <td class="py-1 pr-3 hidden sm:table-cell" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
-                <td class="hidden sm:table-cell" style="color:var(--text);">${r.reino}</td>
+                <td class="hidden sm:table-cell" style="color:var(--text);">${sanitize(r.reino)}</td>
             </tr>
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Riesgo</td>
@@ -810,10 +805,10 @@ function cambiarTab(tab) {
             </tr>
             <tr>
                 <td class="py-1 pr-3 hidden sm:table-cell" style="color:var(--muted);font-size:.78rem;font-weight:600;vertical-align:top;">Ficha técnica</td>
-                <td class="hidden sm:table-cell" style="color:var(--text);">${r.ficha_tecnica}</td>
+                <td class="hidden sm:table-cell" style="color:var(--text);">${sanitize(r.ficha_tecnica)}</td>
             </tr>
           </table>
-           </div><p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: BD local · #${r.id} · ${r.fecha}</p>
+           </div><p class="mono text-right mt-2" style="font-size:.65rem;color:var(--muted);">fuente: BD local · #${sanitize(r.id)} · ${sanitize(r.fecha)}</p>
         </div>`).join('');
     } else {
       document.getElementById('local-content').innerHTML =
@@ -827,7 +822,7 @@ function cambiarTab(tab) {
         <div class="card p-4 fade-up" style="border-left:3px solid var(--neon);background:rgba(10,26,14,.8);">
           ${g.foto_url ? `
           <div style="margin:-1rem -1rem 0.75rem -1rem;border-radius:.75rem .75rem 0 0;overflow:hidden;height:160px;">
-            <img src="${g.foto_url}" alt="Foto de la especie"
+            <img src="${sanitize(g.foto_url)}" alt="Foto de la especie"
               style="width:100%;height:100%;object-fit:cover;display:block;"
               onerror="this.parentElement.style.display='none'" />
           </div>` : ''}
@@ -835,15 +830,15 @@ function cambiarTab(tab) {
           <table class="w-full text-sm" style="border-collapse:collapse;">
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
-              <td style="font-style:italic;font-weight:600;color:var(--text);">${g.nombre_cientifico}</td>
+              <td style="font-style:italic;font-weight:600;color:var(--text);">${sanitize(g.nombre_cientifico)}</td>
             </tr>
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
-              <td style="color:var(--text);">${g.familia}</td>
+              <td style="color:var(--text);">${sanitize(g.familia)}</td>
             </tr>
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
-              <td style="color:var(--text);">${g.reino}</td>
+              <td style="color:var(--text);">${sanitize(g.reino)}</td>
             </tr>
             ${g.confianza != null ? `
             <tr>
@@ -851,9 +846,9 @@ function cambiarTab(tab) {
               <td>
                 <div style="display:flex;align-items:center;gap:.5rem;">
                   <div style="flex:1;height:6px;background:#ddd;border-radius:999px;">
-                    <div style="width:${g.confianza}%;height:100%;background:var(--neon);border-radius:999px;"></div>
+                    <div style="width:${sanitize(g.confianza)}%;height:100%;background:var(--neon);border-radius:999px;"></div>
                   </div>
-                  <span class="mono" style="font-size:.75rem;">${g.confianza}%</span>
+                  <span class="mono" style="font-size:.75rem;">${sanitize(g.confianza)}%</span>
                 </div>
               </td>
             </tr>` : ''}
@@ -861,7 +856,7 @@ function cambiarTab(tab) {
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Wikipedia</td>
               <td>
-                <a href="${g.wikipedia_url}" target="_blank" rel="noopener"
+                <a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener"
                   style="color:var(--cyan);font-size:.82rem;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;">
                   🔗 Ver artículo completo
                 </a>
@@ -921,7 +916,7 @@ function cambiarTab(tab) {
       document.getElementById('img-preview').src = e.target.result;
       document.getElementById('img-nombre').textContent = file.name;
       document.getElementById('img-preview-wrap').classList.remove('hidden');
-      document.getElementById('img-resultado').innerHTML = '';
+      document.getElementById('img-resultado').textContent = '';
     };
     reader.readAsDataURL(file);
   }
@@ -988,6 +983,7 @@ function cambiarTab(tab) {
           }]
         })
       });
+      if (!claudeRes.ok) throw new Error('Error al contactar el servicio de IA.');
       const claudeData = await claudeRes.json();
       nombreDetectado = claudeData?.content?.[0]?.text?.trim();
       if (!nombreDetectado) throw new Error('Claude no identificó la especie.');
@@ -1005,7 +1001,7 @@ function cambiarTab(tab) {
       });
       if (!res.ok) {
         const e = await res.json();
-        contenedor.innerHTML = errorBox(`Claude detectó "${nombreDetectado}" pero: ${e.detail}`);
+        contenedor.innerHTML = errorBox(`Claude detectó "${sanitize(nombreDetectado)}" pero: ${e.detail}`);
         return;
       }
       const g = await res.json();
@@ -1013,24 +1009,24 @@ function cambiarTab(tab) {
         <div class="card p-4 fade-up" style="border-left:3px solid var(--amber);">
           ${g.foto_url ? `
           <div style="margin:-1rem -1rem 0.75rem -1rem;border-radius:.875rem .875rem 0 0;overflow:hidden;height:180px;">
-            <img src="${g.foto_url}" alt="Foto"
+            <img src="${sanitize(g.foto_url)}" alt="Foto"
               style="width:100%;height:100%;object-fit:cover;display:block;"
               onerror="this.parentElement.style.display='none'" />
           </div>` : ''}
           <p class="mono mb-2" style="font-size:.68rem;color:var(--amber);letter-spacing:.08em;">IDENTIFICACIÓN POR IMAGEN · IA</p>
-          <p class="mono mb-3" style="font-size:.7rem;color:var(--muted);">Claude detectó: <span style="color:var(--white);font-style:italic;">${nombreDetectado}</span></p>
+          <p class="mono mb-3" style="font-size:.7rem;color:var(--muted);">Claude detectó: <span style="color:var(--white);font-style:italic;">${sanitize(nombreDetectado)}</span></p>
           <table class="w-full text-sm" style="border-collapse:collapse;">
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap;">Nombre científico</td>
-              <td style="font-style:italic;font-weight:600;color:var(--white);">${g.nombre_cientifico}</td>
+              <td style="font-style:italic;font-weight:600;color:var(--white);">${sanitize(g.nombre_cientifico)}</td>
             </tr>
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Familia</td>
-              <td style="color:var(--text);">${g.familia}</td>
+              <td style="color:var(--text);">${sanitize(g.familia)}</td>
             </tr>
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Reino</td>
-              <td style="color:var(--text);">${g.reino}</td>
+              <td style="color:var(--text);">${sanitize(g.reino)}</td>
             </tr>
             ${g.confianza != null ? `
             <tr>
@@ -1038,9 +1034,9 @@ function cambiarTab(tab) {
               <td>
                 <div style="display:flex;align-items:center;gap:.5rem;">
                   <div style="flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:999px;">
-                    <div style="width:${g.confianza}%;height:100%;background:var(--neon);border-radius:999px;"></div>
+                    <div style="width:${sanitize(g.confianza)}%;height:100%;background:var(--neon);border-radius:999px;"></div>
                   </div>
-                  <span class="mono" style="font-size:.75rem;color:var(--neon);">${g.confianza}%</span>
+                  <span class="mono" style="font-size:.75rem;color:var(--neon);">${sanitize(g.confianza)}%</span>
                 </div>
               </td>
             </tr>` : ''}
@@ -1048,7 +1044,7 @@ function cambiarTab(tab) {
             <tr>
               <td class="py-1 pr-3" style="color:var(--muted);font-size:.78rem;font-weight:600;">Wikipedia</td>
               <td>
-                <a href="${g.wikipedia_url}" target="_blank" rel="noopener"
+                <a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener"
                   style="color:var(--cyan);font-size:.82rem;text-decoration:none;">
                   🔗 Ver artículo completo
                 </a>
@@ -1386,16 +1382,18 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
           ]}]
         })
       });
+      if (!claudeRes.ok) throw new Error();
       const claudeData = await claudeRes.json();
       const nombre = claudeData?.content?.[0]?.text?.trim();
       if (!nombre) throw new Error();
       const res = await fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(nombre)}`, { headers: { 'x-api-key': API_KEY } });
+      if (!res.ok) throw new Error('No encontrado');
       const g = await res.json();
       contenido.innerHTML = `
-        <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">${g.nombre_cientifico}</p>
-        <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);margin-bottom:.5rem;">Familia: ${g.familia} · Reino: ${g.reino}</p>
-        ${g.confianza != null ? `<p style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--neon);">Confianza: ${g.confianza}%</p>` : ''}
-        ${g.wikipedia_url ? `<a href="${g.wikipedia_url}" target="_blank" style="color:var(--cyan);font-size:.85rem;">🔗 Ver más info</a>` : ''}`;
+        <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">${sanitize(g.nombre_cientifico)}</p>
+        <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);margin-bottom:.5rem;">Familia: ${sanitize(g.familia)} · Reino: ${sanitize(g.reino)}</p>
+        ${g.confianza != null ? `<p style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--neon);">Confianza: ${sanitize(g.confianza)}%</p>` : ''}
+        ${g.wikipedia_url && isValidHttpUrl(g.wikipedia_url) ? `<a href="${sanitize(g.wikipedia_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:.85rem;">🔗 Ver más info</a>` : ''}`;
     } catch {
       contenido.innerHTML = `<p style="color:var(--red);font-family:'Manrope',sans-serif;">No se pudo identificar. Intenta de nuevo.</p>`;
     }
@@ -1405,7 +1403,10 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       showToast('Tu navegador no soporta reconocimiento de voz.', 'error'); return;
     }
-    document.getElementById('campo-voz-estado').classList.remove('hidden');
+    const voiceStateEl = document.getElementById('campo-voz-estado');
+    if (voiceStateEl) {
+      voiceStateEl.classList.remove('hidden');
+    }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     reconocimientoVoz = new SR();
     reconocimientoVoz.lang = window._vozLang || 'es-MX';
@@ -1415,12 +1416,17 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
       document.getElementById('campo-voz-texto').textContent = `""`;
       if (e.results[0].isFinal) {
         detenerVoz();
-        fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(t)}`, { headers: { 'x-api-key': API_KEY } }).then(r => r.json()).then(g => {
+        fetch(`${API_BASE}/buscar_externo/${encodeURIComponent(t)}`, { headers: { 'x-api-key': API_KEY } }).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(g => {
           const resultado = document.getElementById('campo-resultado');
-          resultado.classList.remove('hidden');
-          document.getElementById('campo-resultado-contenido').innerHTML = `
-            <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">${g.nombre_cientifico}</p>
-            <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);">Familia: ${g.familia} · Reino: ${g.reino}</p>`;
+          if (resultado) {
+            resultado.classList.remove('hidden');
+          }
+          const contenido = document.getElementById('campo-resultado-contenido');
+          if (contenido) {
+            contenido.innerHTML = `
+              <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--neon);margin-bottom:.3rem;">${sanitize(g.nombre_cientifico)}</p>
+              <p style="font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--muted);">Familia: ${sanitize(g.familia)} · Reino: ${sanitize(g.reino)}</p>`;
+          }
         }).catch(() => showToast('No se encontró información.', 'error'));
       }
     };
@@ -1430,7 +1436,20 @@ Object.entries(tabTextos).forEach(([id, texto]) => {
 
   function detenerVoz() {
     if (reconocimientoVoz) { reconocimientoVoz.stop(); reconocimientoVoz = null; }
-    document.getElementById('campo-voz-estado')?.classList.add('hidden');
+    const voiceStateEl = document.getElementById('campo-voz-estado');
+    if (voiceStateEl) {
+      voiceStateEl.classList.add('hidden');
+    }
+  }
+
+  // ✅ Función para validar URLs HTTPS
+  function isValidHttpUrl(string) {
+    try {
+      const url = new URL(string);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (_) {
+      return false;
+    }
   }
 
   function verMapaCampo() {
@@ -1561,7 +1580,7 @@ function aplicarFiltro(tipo) {
       });
       if (!res.ok) { status.textContent = 'No hay registros con ubicación aún.'; return; }
       const focos = await res.json();
-      if (!focos.length) { status.textContent = 'No hay focos con ubicación registrada aún.'; return; }
+      if (!Array.isArray(focos) || !focos.length) { status.textContent = 'No hay focos con ubicación registrada aún.'; return; }
       const colores = { Alto: '#c0392b', Medio: '#d4821a', Bajo: '#3d5a2a' };
       const bounds = [];
       focos.forEach(f => {
@@ -1571,11 +1590,11 @@ function aplicarFiltro(tipo) {
           weight: 2, opacity: 1, fillOpacity: 0.85,
         }).addTo(mapa).bindPopup(`
           <div style="font-family:sans-serif;min-width:180px;">
-            <p style="font-weight:700;margin:0 0 4px;color:var(--white);">${f.nombre_plaga}</p>
-            <p style="font-style:italic;font-size:.8rem;margin:0 0 6px;color:var(--muted);">${f.nombre_cientifico}</p>
-            <p style="font-size:.75rem;margin:0;"><b>Riesgo:</b> ${f.riesgo}</p>
-            <p style="font-size:.75rem;margin:0;"><b>Familia:</b> ${f.familia}</p>
-            <p style="font-size:.75rem;margin:2px 0 0;color:var(--muted);">${f.fecha}</p>
+            <p style="font-weight:700;margin:0 0 4px;color:var(--white);">${sanitize(f.nombre_plaga)}</p>
+            <p style="font-style:italic;font-size:.8rem;margin:0 0 6px;color:var(--muted);">${sanitize(f.nombre_cientifico)}</p>
+            <p style="font-size:.75rem;margin:0;"><b>Riesgo:</b> ${sanitize(f.riesgo)}</p>
+            <p style="font-size:.75rem;margin:0;"><b>Familia:</b> ${sanitize(f.familia)}</p>
+            <p style="font-size:.75rem;margin:2px 0 0;color:var(--muted);">${sanitize(f.fecha)}</p>
           </div>`);
         bounds.push([f.latitud, f.longitud]);
       });

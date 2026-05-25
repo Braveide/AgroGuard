@@ -64,16 +64,19 @@ app = FastAPI(
     version="1.0.0 (Producción Render)",
 )
 
-# CORS Adaptivo: Permite localhost para pruebas y el dominio de tu frontend en Render
-orígenes = ["*"] if ORIGEN_PERMITIDO == "*" else [ORIGEN_PERMITIDO, "http://localhost:5500", "http://127.0.0.1:5500"]
+# CORS Seguro: Solo dominios específicos permitidos
+ALLOWED_ORIGINS = [
+    "https://agroguard-gules.vercel.app",  # Frontend en Vercel
+    "http://localhost:5500",                 # Desarrollo local
+    "http://127.0.0.1:5500",                 # Desarrollo local alternativo
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=orígenes,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Solo métodos necesarios
+    allow_headers=["Content-Type", "x-api-key"],     # Solo headers necesarios
 )
 
 # ─────────────────────────────────────────────
